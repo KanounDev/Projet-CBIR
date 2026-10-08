@@ -83,7 +83,11 @@ Bibliothèques ajoutées par ce plan et absentes de la diapo « Outils » (justi
 | Tags | Fichier texte, un mot-clé par ligne (exemple : `explore`) | Parser simple ; un fichier peut contenir un seul mot ou être vide |
 | Licence | Clé/valeur. Deux variantes vues : (a) date, licence, URL CC, titre, nom/pseudo/id du propriétaire ; (b) la même chose **plus** `Photo id`, `Photo url`, `Web url`. L'URL de la licence est celle de Creative Commons, pas celle de la photo | Le parser lit chaque ligne `clé : valeur` et laisse les champs Flickr vides s'ils manquent ; le champ « URL source » du modèle est donc **optionnel** ; compter (étape 2) combien de fichiers ont `Photo url` |
 | Vignette | `im1.jpg` : 64×64 px | Affichage très petit : prévoir un agrandissement (le plan évite d'agrandir le fichier lui-même) |
-| Numérotation | Les échantillons s'appellent tous `1.txt`/`im1.jpg` ; si la règle id = n − 1 est exacte, `1.txt` correspond à `im2.jpg` et `im1.jpg` à `0.txt` | Vérifier que `0.txt` existe et que les `.txt` vont jusqu'à `999999.txt` (et les images jusqu'à `im1000000.jpg`) |
+| Numérotation | **Confirmée** : `license` va de `0` à `999999` (1 000 000 fichiers), les vignettes de `im1` à `im1000000` (1 000 000 fichiers) | id = numéro de l'image − 1 ; `im1.jpg` ↔ `0.txt` |
+| Comptage des fichiers | Edge Histogram : 1 000 003 fichiers = 1 M + 2 `.DS_Store` + `feature_names.txt` ; Homogeneous Texture : 1 000 001 = 1 M + `feature_names.txt` ; `license` et `tags` : 1 M exactement ; vignettes : 330 000 + 330 000 + 340 000 | Les parsers ne retiennent que les fichiers nommés `<nombre>.txt` (ignorer `.DS_Store` et `feature_names.txt`) |
+| Structure des dossiers | Dossiers imbriqués : `features_edgehistogram/features_edgehistogram/<sous-dossier>/<id>.txt` (idem pour la texture) | Parcours récursif (`os.walk`), jamais de chemin construit à la main |
+| `feature_names.txt` | 150 noms pour l'Edge Histogram (16 blocs locaux × 5 directions, 5 globaux, 65 semi-globaux : 4 verticaux, 4 horizontaux, 4 coins, 1 centre) ; 43 noms pour la texture (DC, SD, 30 énergies = 5 échelles × 6 orientations, 5 valeurs par échelle, 6 par orientation) | Utile pour le rapport et pour pondérer les blocs de dimensions |
+| URL Flickr | `Photo url` présente dans 2 880 fichiers sur les 5 000 premiers parcourus (≈ 58 %, échantillon non aléatoire) | Les liens Flickr restent optionnels ; refaire le comptage sur un échantillon aléatoire pour le rapport |
 
 ---
 
@@ -351,6 +355,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
   4. Gérer l'upload d'une image requête externe (optionnel) en plus du choix d'une image de la base.
   5. Configurer CORS pour autoriser le domaine du frontend.
   6. Charger les index et descripteurs **une seule fois au démarrage**.
+  7. *Préparer Docker dès maintenant* : lire l'adresse MongoDB dans une variable d'environnement (`MONGO_URI`, valeur par défaut `mongodb://localhost:27017`) et le dossier des données dans une autre (`DATA_DIR`), sans chemin ni `localhost` écrits en dur.
 - **Outils** : FastAPI, Uvicorn, Pydantic ; documentation automatique via `/docs` (Swagger).
 - **Contexte à donner à Claude** : contrat d'API, services déjà écrits, format exact des réponses attendues par le client.
 - **Livrable** : serveur fonctionnel en local.
@@ -390,7 +395,8 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 - **Actions** :
   1. **Cible principale : PC LIASA.** Installer l'environnement (et MongoDB, ou restaurer la base avec `mongodump`/`mongorestore`), copier le code, la base de données, les index, les descripteurs et les vignettes ; préparer un script de lancement unique (backend + frontend).
   2. Tester le scénario complet sur cette machine (mémoire, chemins, ports), idéalement avant la date de démo.
-  3. *Optionnel (bonus)* : version en ligne limitée à un sous-ensemble (backend sur Render, frontend sur Vercel ou Cloudflare Pages, images sur Cloudflare R2), en gardant le calcul lourd sur le backend.
+  3. *Optionnel (bonus) : Docker.* `Dockerfile` pour le backend, `docker-compose.yml` avec un service `mongo` (`MONGO_URI=mongodb://mongo:27017`), le dossier `data/` monté en **volume** (jamais copié dans l'image), `requirements.txt` généré avec `pip freeze`. Le mode principal de la démo reste Python local, car Docker n'est peut-être pas installé sur le PC LIASA.
+  4. *Optionnel (bonus)* : version en ligne limitée à un sous-ensemble (backend sur Render, frontend sur Vercel ou Cloudflare Pages, images sur Cloudflare R2), en gardant le calcul lourd sur le backend.
 - **Points d'attention** : taille des index et vignettes à copier sur le PC LIASA, versions de Python et des bibliothèques identiques, chemins relatifs dans la configuration. Pour la version en ligne : mise en veille du plan gratuit de Render (premier appel lent) et mémoire limitée (environ 512 Mo).
 - **Contexte à donner à Claude** : caractéristiques du PC LIASA (OS, RAM, Python disponible), taille de l'index, fichiers de configuration actuels.
 - **Livrable** : démo qui tourne sur le PC LIASA ; export de la base MongoDB (`mongodump`) fourni avec le code ; optionnellement une URL publique.

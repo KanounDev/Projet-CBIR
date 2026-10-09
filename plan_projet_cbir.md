@@ -12,19 +12,30 @@
 
 **Objectif** : une application client/serveur de recherche d'images par mots-clés et/ou par similarité visuelle.
 
-**Deux jeux de données** :
+**Jeu de données unique** :
 1. **MIRFLICKR-1M** : 1 million d'images. Ce qui est réellement disponible dans `data/mirflickr/raw` :
    - **2 descripteurs MPEG-7 fournis** : Edge Histogram (`features_edgehistogram`, **150 valeurs** par image : 80 locales + 5 globales + 65 semi-globales) et Homogeneous Texture (`features_homogeneoustexture`, **43 valeurs** par image). Un fichier texte par image, une valeur par ligne. Rien à calculer pour ceux-là, mais **aucun descripteur couleur n'est fourni**.
    - **Descripteurs VGG16 (deep learning)** : **512 dimensions** par image, extraits avec VGG16 pré-entraîné sur ImageNet (conv features + Global Average Pooling). Fichiers : `data/features/vgg16_gap512_1M.npy` (~2 GB), modèles dans `data/models/vgg16_features_imagenet.pth`. **Recommandé pour la similarité visuelle sémantique** (performances bien supérieures à MPEG-7).
    - **Tags** (`tags`) : source des mots-clés.
    - **Licences** (`license`) : fichier texte clé/valeur (date de dépôt, licence, URL de la licence Creative Commons, titre, nom/pseudo/identifiant du propriétaire). **Selon les fichiers, il contient aussi `Photo id`, `Photo url` (image Flickr) et `Web url` (page Flickr de la photo) ; ces trois lignes sont absentes de certains fichiers** (voir « Constats sur les données réelles » ci-dessous).
    - **Vignettes uniquement** (`thumbs1-33`, `thumbs34-66`, `thumbs67-100`) : pas d'images en pleine taille en local (l'exemple `im1.jpg` fait 64×64 px). L'affichage repose sur les vignettes ; l'image complète s'ouvre via l'URL Flickr quand elle existe dans le fichier `license` (pas pour toutes les images, et certains liens Flickr peuvent être morts).
-2. **Base « Objects »** : images pour lesquelles les descripteurs sont à calculer (couleur, LBP, HOG, etc.).
+
+> **Note** : La base « Objects » mentionnée dans le sujet n'est pas disponible. Le projet se concentre exclusivement sur MIRFLICKR-1M.
+
+**Architecture de stockage (standard industriel)** :
+
+| Donnée | Stockage | Justification |
+|---|---|---|
+| **Images (vignettes)** | Fichiers `.jpg` dans `data/mirflickr/raw/thumbs*/` | ✅ Accès rapide, servables par FastAPI en statique, caching navigateur |
+| **Métadonnées** (chemins, URLs, tags, licences) | **MongoDB** | ✅ Recherche textuelle efficace, flexible, index sur mots-clés |
+| **Descripteurs** (Edge Histogram, Homogeneous Texture, VGG16) | **Fichiers `.npy`** dans `data/features/` | ✅ 10-100x plus rapide pour nearest neighbors, accès direct NumPy/FAISS, compatible VP-Tree |
+
+> **Important** : MongoDB stocke les **chemins** des images (`thumb_path`), pas les images elles-mêmes. Les descripteurs sont stockés en `.npy` pour des raisons de performance (recherche vectorielle). C'est l'approche recommandée pour les systèmes CBIR à grande échelle.
 
 **Fonctionnalités minimales** :
 - Requête par mots-clés **ET/OU** par image (image de la base ou image issue d'un résultat précédent).
 - L'utilisateur choisit le ou les descripteurs utilisés par le serveur (**MPEG-7** : Edge Histogram, Homogeneous Texture ; **Deep Learning** : VGG16).
-- Le serveur calcule/utilise les descripteurs, cherche les images similaires et renvoie la liste des URLs.
+- Le serveur utilise les descripteurs pré-calculés (`.npy`), cherche les images similaires via les index (FAISS/VP-Tree) et renvoie la liste des URLs.
 - Affichage au client : image requête + images similaires triées par distance croissante (la plus ressemblante en premier ; la diapo dit « ordre croissant de ressemblance », à interpréter ainsi, à confirmer avec l'enseignant).
 - Relance d'une recherche en cliquant sur une image résultat.
 - Temps de recherche optimisé grâce à une bonne structure de l'espace des index (FAISS pour 1M+ vectors, VP-Tree pour démonstration).
@@ -47,7 +58,7 @@
 | Descripteurs MIRFLICKR | **Edge Histogram** + **Homogeneous Texture** (fournis, à parser) | – |
 | **Descripteurs deep learning (MIRFLICKR)** | **VGG16** (conv features + Global Average Pooling → **512 dims**, L2-normalisés) | ResNet, EfficientNet |
 | Index de similarité | **FAISS** (production, 1M+ vectors) + **VP-Tree** (démonstration, ≤100k vectors) | `scikit-learn NearestNeighbors`, `scipy.spatial.cKDTree` |
-| Base de données | **MongoDB** (métadonnées : URLs, tags, licences) | Elasticsearch (lourd) |
+| Base de données | **MongoDB** (métadonnées : chemins images, URLs Flickr, tags, licences) | Elasticsearch (lourd) |
 | Accès MongoDB depuis Python | **pymongo** | motor (version asynchrone) |
 | Recherche texte (mots-clés) | **Index texte MongoDB** (`$text`) ou index sur le champ liste de mots-clés (ET/OU) | Elasticsearch si besoin de plus de souplesse (pluriels, lemmes) |
 | Client | **HTML + CSS + JavaScript** (vanilla) ou **Streamlit** si le temps manque | React (absent de la diapo « Outils », donc à valider) |
@@ -61,7 +72,6 @@
 | Élément | Diapos | Ce plan |
 |---|---|---|
 | Descripteurs MIRFLICKR | MPEG-7 fournis | Edge Histogram + Homogeneous Texture (MPEG-7) + **VGG16 (deep learning, recommandé)** |
-| Descripteurs Objects | À calculer (couleur, LBP, HOG) | `color_hist`, `lbp`, `hog` |
 | Client | Application web | HTML/CSS/JS (Streamlit en plan B) |
 | Serveur | Node.js, IIS, Django, Flask, Streamlit ; web service FastAPI | Python + **FastAPI** |
 | Échange | XML ou JSON | JSON |
@@ -105,28 +115,34 @@ Bibliothèques ajoutées par ce plan et absentes de la diapo « Outils » (justi
 │                │ ◄─────────────────────── │  │ Routes API (JSON)     │   │
 │                │   liste d'URLs triées    │  ├───────────────────────┤   │
 └────────────────┘   + scores               │  │ Service de recherche  │   │
-                                            │  │  - texte              │   │
-                                            │  │  - visuel             │   │
+                                            │  │  - texte (MongoDB)    │   │
+                                            │  │  - visuel (FAISS)     │   │
                                             │  │  - fusion ET/OU       │   │
                                             │  ├───────────────────────┤   │
-                                            │  │ Extracteurs / parsers │   │
-                                            │  │ de descripteurs       │   │
-                                            │  ├───────────────────────┤   │
-                                            │  │ Index (VP-Tree/FAISS) │   │
+                                            │  │ Index pré-chargés     │   │
+                                            │  │  - FAISS (.faiss)     │   │
+                                            │  │  - VP-Tree (.pkl)     │   │
                                             │  └──────────┬────────────┘   │
                                             └─────────────┼────────────────┘
                                                           │
                           ┌───────────────────────────────┼─────────────────┐
                           │                               │                 │
                   ┌───────▼────────┐            ┌─────────▼───────┐  ┌──────▼────────────┐
-                  │ Base de données│            │ Fichiers index  │  │ Stockage images   │
-                  │ MongoDB        │            │ (.npy, .pkl)    │  │ vignettes locales │
-                  │ URLs, tags,    │            │ descripteurs    │  │ + image complète  │
-                  │ licences       │            │                 │  │ via URL Flickr    │
+                  │ MongoDB        │            │ Fichiers .npy   │  │ Images/vignettes  │
+                  │                │            │ (descripteurs)  │  │ (fichiers .jpg)   │
+                  │ - chemins      │            │                 │  │                   │
+                  │ - URLs Flickr  │            │ - edgehistogram │  │ - thumbs1-33/     │
+                  │ - tags         │            │ - homogtexture  │  │ - thumbs34-66/    │
+                  │ - licences     │            │ - vgg16_gap512  │  │ - thumbs67-100/   │
                   └────────────────┘            └─────────────────┘  └───────────────────┘
 ```
 
-> Correspondance avec la diapo « Architecture » : la « Feature & Image Database » du schéma regroupe ici MongoDB (URLs, tags, licences), les fichiers de descripteurs `.npy`, les index sérialisés et le dossier d'images/vignettes. Tout cela fait partie du livrable « BD ».
+> **Architecture recommandée (standard industriel)** :
+> - **MongoDB** stocke uniquement les **métadonnées** (chemins des vignettes, URLs Flickr, tags, licences), pas les images ni les descripteurs.
+> - **Fichiers `.npy`** pour les descripteurs : accès 10-100x plus rapide pour la recherche vectorielle, compatible FAISS/VP-Tree.
+> - **Fichiers `.jpg`** pour les vignettes : servables directement par FastAPI en fichiers statiques.
+>
+> Correspondance avec la diapo « Architecture » : la « Feature & Image Database » du schéma regroupe ici les trois couches ci-dessus.
 
 ### 2.2 Deux phases bien séparées
 
@@ -235,11 +251,39 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 
 ### 2.5 Modèle de données
 
-- **Collection MongoDB `images`** (un document par image) : identifiant numérique, base d'origine (mirflickr/objects), chemin ou URL de la vignette, URL de l'image Flickr et URL de la page Flickr (`photo_url`, `web_url` ; MIRFLICKR uniquement, **optionnelles** car absentes de certains fichiers `license`), identifiant Flickr de la photo, licence et URL de la licence (MIRFLICKR), propriétaire (nom, id), largeur/hauteur, et **champ liste `keywords`** (mots-clés normalisés, avec un index pour la recherche ET/OU). Mots-clés MIRFLICKR : fichiers `tags` ; mots-clés Objects : noms de classes/dossiers.
-- Pas de table de liaison : le modèle document de MongoDB rend la jointure image ↔ mot-clé inutile.
-- **Fichiers de descripteurs** : un fichier par descripteur et par base, où la ligne *i* correspond à l'identifiant *i* de l'image.
-- **Fichiers d'index** : un par descripteur (et éventuellement un par combinaison).
-- **Règle d'identifiants MIRFLICKR** (à respecter partout) : **id = numéro de l'image − 1**. Les images (`imXXXX.jpg`) sont numérotées à partir de 1, alors que les tags, licences et descripteurs sont numérotés à partir de 0 (ex. `im609999.jpg` ↔ `609998.txt`). Les données sont réparties en 100 dossiers de 10 000 images.
+**Collection MongoDB `images`** (un document par image MIRFLICKR) :
+
+```javascript
+{
+  "_id": 42,  // identifiant numérique (id = numéro image - 1)
+  "thumb_path": "thumbs1-33/thumbnails/1/im43.jpg",  // CHEMIN RELATIF, pas l'image
+  "photo_url": "https://farm.static.flickr.com/...",  // URL image Flickr (optionnel)
+  "web_url": "https://www.flickr.com/photos/...",    // URL page Flickr (optionnel)
+  "keywords": ["sunset", "beach", "ocean"],          // tags normalisés
+  "license": "CC BY 2.0",
+  "license_url": "https://creativecommons.org/licenses/by/2.0/",
+  "owner_name": "John Doe",
+  "owner_id": "12345"
+}
+```
+
+> **Important** : MongoDB stocke les **chemins** (`thumb_path`), pas les images. Les descripteurs sont en `.npy`, pas dans MongoDB.
+
+**Fichiers de descripteurs** (format `.npy`, alignés par identifiant) :
+
+| Fichier | Dimensions | Type | Description |
+|---|---|---|---|
+| `data/features/edgehistogram.npy` | 1M × 150 | float32 | Edge Histogram MPEG-7 |
+| `data/features/homogeneoustexture.npy` | 1M × 43 | float32 | Homogeneous Texture MPEG-7 |
+| `data/features/vgg16_gap512_1M.npy` | 1M × 512 | float32 | VGG16 GAP (deep learning) |
+
+**Fichiers d'index** (un par descripteur) :
+- `data/indexes/edgehistogram_euclidean.faiss`
+- `data/indexes/homogeneoustexture_euclidean.faiss`
+- `data/indexes/vgg16_gap512.faiss`
+- Versions VP-Tree (`.vptree`) pour démonstration sur sous-ensemble
+
+**Règle d'identifiants MIRFLICKR** (à respecter partout) : **id = numéro de l'image − 1**. Les images (`imXXXX.jpg`) sont numérotées à partir de 1, alors que les tags, licences et descripteurs sont numérotés à partir de 0 (ex. `im609999.jpg` ↔ `609998.txt`). Les données sont réparties en 100 dossiers de 10 000 images.
 
 ---
 
@@ -299,21 +343,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 - **Livrable** : modules `mpeg7_parser` et `tags_parser`, script `02_extract_descriptors.py` (partie MIRFLICKR), fichiers `.npy`.
 - **Validation** : dimensions attendues respectées, aucune valeur manquante, vérification manuelle sur 5 images.
 
-### Étape 5 : Calcul des descripteurs de la base Objects
-
-- **Objectif** : calculer au moins 3 descripteurs (couleur, texture LBP, forme/contours HOG).
-- **Actions** :
-  1. Définir une interface commune : image en entrée → vecteur de taille fixe en sortie.
-  2. Implémenter l'histogramme de couleur (espace HSV, quantification), LBP (histogramme uniforme) et HOG (redimensionnement fixe).
-  3. Calculer sur toute la base et sauvegarder (calcul parallélisé avec `multiprocessing` ou `joblib`).
-  4. Prévoir le **même extracteur pour les images envoyées par l'utilisateur** à l'exécution.
-  5. *Optionnel* : calculer aussi ces descripteurs sur les vignettes MIRFLICKR, pour disposer d'un descripteur couleur sur cette base (absent des fichiers fournis).
-- **Outils** : scikit-image, OpenCV, NumPy, joblib.
-- **Contexte à donner à Claude** : l'interface commune, la taille standard des images, les paramètres souhaités (nombre de bins, etc.).
-- **Livrable** : modules `color_hist`, `lbp`, `hog` et fichiers `.npy`.
-- **Validation** : deux images visuellement proches ont une distance plus faible que deux images différentes (test sur quelques exemples).
-
-### Étape 5b : Extraction des descripteurs VGG16 (Deep Learning) - RECOMMANDÉ
+### Étape 5 : Extraction des descripteurs VGG16 (Deep Learning) - RECOMMANDÉ
 
 - **Objectif** : extraire des descripteurs de haute qualité (512 dimensions) avec un réseau pré-entraîné sur ImageNet.
 - **Justification** : les descripteurs MPEG-7 (Edge Histogram, Homogeneous Texture) sont peu performants pour la similarité sémantique. VGG16 offre une similarité visuelle bien supérieure (testé et validé).
@@ -329,6 +359,8 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 - **Contexte à donner à Claude** : le code déjà écrit dans `backend/app/descriptors/vgg.py` et `backend/scripts/05_vgg_similar.py`.
 - **Livrable** : `vgg16_gap512_1M.npy`, `vgg16_features_imagenet.pth`, script `05_extract_vgg.py` (si nouveau), module `backend/app/descriptors/vgg.py`.
 - **Validation** : rechercher quelques images et vérifier que les résultats sont visuellement cohérents (bien meilleurs qu'avec MPEG-7). Script de test : `python backend/scripts/05_vgg_similar.py <image_id>`.
+
+> **Note** : Les descripteurs VGG16 sont déjà extraits et sauvegardés dans `data/features/vgg16_gap512_1M.npy`. Cette étape est validée.
 
 ### Étape 6 : Distances et recherche par similarité (version de référence)
 
@@ -356,18 +388,34 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 - **Livrable** : `vptree.py`, `faiss_index.py`, `index_manager.py`, script `03_build_indexes.py`, tableau comparatif.
 - **Validation** : les résultats de FAISS correspondent à ceux de la recherche exhaustive (même top-k, recall@k = 100%) et le temps de recherche est nettement inférieur.
 
-### Étape 8 : Base de données et recherche textuelle
+### Étape 8 : Base de données, recherche textuelle et service de recherche unifié
 
-- **Objectif** : stocker les URLs et métadonnées et permettre la recherche par mots-clés.
+- **Objectif** : stocker les URLs et métadonnées, permettre la recherche par mots-clés, et exposer un service de recherche unifié avec choix des descripteurs/distances/index.
 - **Actions** :
-  1. Créer la collection MongoDB, ses index (identifiant, mots-clés) et charger les métadonnées (script `04_fill_database.py`) : chemins des vignettes, URLs Flickr, licences, tags.
-  2. Implémenter la recherche par mots-clés (normalisation, minuscules, pluriels éventuels).
-  3. Implémenter le **mode ET/OU** entre plusieurs mots-clés.
-  4. Implémenter la **fusion texte + visuel** : filtrer par mots-clés puis trier par similarité, ou combiner les scores.
-- **Outils** : MongoDB, pymongo (Elasticsearch seulement en alternative).
-- **Contexte à donner à Claude** : schéma, exemples de requêtes attendues, règle de fusion souhaitée.
-- **Livrable** : `db/`, `text_search.py`, `fusion.py`.
-- **Validation** : des requêtes test (un mot, deux mots en ET, deux mots en OU, mot + image) donnent des résultats cohérents.
+  1. ✅ Créer la collection MongoDB, ses index (identifiant, mots-clés) et charger les métadonnées (script `04b_load_mongo.py`) : chemins des vignettes, URLs Flickr, licences, tags.
+  2. Implémenter la **couche d'accès MongoDB** (`db/mongodb.py`) : connexion, requêtes par ID, par mots-clés.
+  3. Implémenter la **recherche par mots-clés** (`services/text_search.py`) : normalisation, minuscules, mode ET (`$all`) / OU (`$in`).
+  4. Implémenter le **service de recherche unifié** (`services/search_service.py`) qui permet à l'utilisateur de choisir :
+     - **Descripteur(s)** : `vgg16`, `edgehistogram`, `homogeneoustexture` (un ou plusieurs, avec pondération)
+     - **Distance** par descripteur : `euclidean`, `cosine`, `chi2`, `manhattan` (L1)
+     - **Index** : `faiss` (production, 1M+ images) ou `vptree` (démonstration, ≤100k) ou `brute` (référence)
+     - **Fusion** des descripteurs : normalisation des distances puis somme pondérée
+  5. Implémenter la **fusion texte + visuel** : filtrer par mots-clés puis trier par similarité visuelle, ou recherche visuelle seule.
+  6. Créer un **manager d'index** (`indexing/index_manager.py`) qui charge les index FAISS/VP-Tree appropriés selon le descripteur et la distance choisis.
+- **Outils** : MongoDB, pymongo, NumPy, FAISS.
+- **Contexte à donner à Claude** : schéma MongoDB, structure des index, interface de recherche souhaitée.
+- **Livrable** :
+  - `backend/app/db/mongodb.py` - connexion et requêtes MongoDB
+  - `backend/app/services/text_search.py` - recherche par mots-clés (ET/OU)
+  - `backend/app/services/search_service.py` - service unifié avec choix descripteur/distance/index
+  - `backend/app/indexing/index_manager.py` - gestionnaire d'index FAISS/VP-Tree
+- **Validation** :
+  - Recherche par un mot-clé retourne les images correspondantes
+  - Recherche ET (`$all`) et OU (`$in`) fonctionnent correctement
+  - Recherche visuelle avec VGG16 + euclidean retourne des résultats cohérents
+  - Recherche visuelle avec Edge Histogram + chi2 retourne des résultats cohérents
+  - Fusion de plusieurs descripteurs fonctionne
+  - Comparaison FAISS vs brute force donne les mêmes résultats (recall@k = 100%)
 
 ### Étape 9 : API FastAPI
 

@@ -133,90 +133,94 @@ Bibliothèques ajoutées par ce plan et absentes de la diapo « Outils » (justi
 1. **Phase hors ligne (une seule fois)** : parsing des répertoires, tags et licences ; lecture des descripteurs MPEG-7 (MIRFLICKR) et calcul des descripteurs (Objects) ; construction des index ; remplissage de la base de données.
 2. **Phase en ligne (à chaque requête)** : réception de la requête, calcul du descripteur de l'image requête si nécessaire, recherche dans l'index, fusion avec le texte, renvoi des résultats.
 
-### 2.3 Arborescence proposée
+### 2.3 Arborescence du projet
 
 ```
-cbir-project/
-├── README.md
-├── docker-compose.yml              (optionnel)
-├── .env.example
+projet-CBIR/
+├── plan_projet_cbir.md               (ce document)
+├── Architecture de Recherche d'Images CBIR.png
+├── .vscode/
+│   └── settings.json
 │
-├── data/                           (non versionné dans Git)
+├── data/                             (non versionné dans Git)
 │   ├── mirflickr/
-│   │   └── raw/                    (données telles que téléchargées)
+│   │   └── raw/                      (données telles que téléchargées)
 │   │       ├── features_edgehistogram/
-│   │       │   └── features_edgehistogram/   (puis sous-dossiers de fichiers)
+│   │       │   └── features_edgehistogram/   (fichiers .txt, 150 valeurs/image)
 │   │       ├── features_homogeneoustexture/
-│   │       │   └── features_homogeneoustexture/
-│   │       ├── license/
-│   │       │   └── license/
-│   │       ├── tags/
-│   │       │   └── tags/
-│   │       ├── thumbs1-33/
-│   │       │   └── thumbs/                   (puis sous-dossiers d'images)
+│   │       │   └── features_homogeneoustexture/   (fichiers .txt, 43 valeurs/image)
+│   │       ├── license/              (fichiers .txt, métadonnées)
+│   │       ├── tags/                 (fichiers .txt, mots-clés)
+│   │       ├── thumbs1-33/           (vignettes 64×64, organisées en sous-dossiers)
 │   │       ├── thumbs34-66/
-│   │       │   └── thumbs/
 │   │       └── thumbs67-100/
-│   │           └── thumbs/
 │   ├── objects/
 │   │   └── images/
-│   ├── metadata/                   (table de correspondance id ↔ chemin/URL/tags)
-│   ├── features/                   (descripteurs au format .npy)
-│   └── indexes/                    (index sérialisés)
+│   ├── metadata/                     (tables de correspondance id ↔ chemin/URL/tags)
+│   │   ├── metadata.jsonl            (1M images)
+│   │   └── metadata_test.jsonl       (1k images, test)
+│   ├── features/                     (descripteurs au format .npy)
+│   │   ├── edgehistogram.npy         (1M × 150, MPEG-7)
+│   │   ├── edgehistogram_test.npy    (1k × 150, test)
+│   │   ├── edgehistogram_normalized.npy   (L2-normalisé)
+│   │   ├── edgehistogram_test_normalized.npy
+│   │   ├── edgehistogram_ids.npy
+│   │   ├── edgehistogram_valid.npy   (masque images non vides)
+│   │   ├── homogeneoustexture.npy    (1M × 43, MPEG-7)
+│   │   ├── homogeneoustexture_test.npy
+│   │   ├── homogeneoustexture_normalized.npy
+│   │   ├── homogeneoustexture_test_normalized.npy
+│   │   ├── homogeneoustexture_ids.npy
+│   │   ├── homogeneoustexture_valid.npy
+│   │   └── vgg16_gap512_1M.npy       (1M × 512, deep learning)
+│   ├── indexes/                      (index sérialisés)
+│   │   ├── edgehistogram_euclidean.faiss
+│   │   ├── edgehistogram_euclidean.vptree
+│   │   ├── homogeneoustexture_euclidean.faiss
+│   │   └── homogeneoustexture_euclidean.vptree
+│   ├── models/                       (modèles pré-entraînés)
+│   │   └── vgg16_features_imagenet.pth   (poids VGG16, usage hors ligne)
+│   ├── search_results/               (résultats de recherche, montages)
+│   └── benchmark_results.json
 │
 ├── backend/
-│   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── app/
-│   │   ├── main.py                 (point d'entrée FastAPI, CORS, fichiers statiques des vignettes)
-│   │   ├── config.py               (chemins, paramètres)
-│   │   ├── api/
-│   │   │   ├── routes_search.py    (recherche texte/image/mixte)
-│   │   │   ├── routes_images.py    (liste, détail, images de la base)
-│   │   │   └── routes_meta.py      (descripteurs disponibles, santé)
-│   │   ├── schemas/                (modèles de requête/réponse)
+│   │   ├── __init__.py
+│   │   ├── api/                      (VIDE - à implémenter)
+│   │   ├── db/                       (VIDE - à implémenter)
+│   │   ├── schemas/                  (VIDE - à implémenter)
 │   │   ├── services/
-│   │   │   ├── search_service.py   (orchestration des recherches)
-│   │   │   ├── text_search.py      (mots-clés)
-│   │   │   ├── visual_search.py    (similarité visuelle)
-│   │   │   └── fusion.py           (combinaison ET/OU, pondération)
+│   │   │   ├── __init__.py
+│   │   │   └── visual_search.py      (recherche brute-force, fusion descripteurs)
 │   │   ├── descriptors/
-│   │   │   ├── base.py             (interface commune d'un descripteur)
-│   │   │   ├── mpeg7_parser.py     (Edge Histogram, Homogeneous Texture)
-│   │   │   ├── tags_parser.py      (lecture des tags MIRFLICKR)
-│   │   │   ├── color_hist.py
-│   │   │   ├── lbp.py
-│   │   │   └── hog.py
-│   │   ├── indexing/
-│   │   │   ├── distances.py        (euclidienne, cosinus, L1, chi²)
-│   │   │   ├── vptree.py
-│   │   │   ├── faiss_index.py      (ou knn_index.py)
-│   │   │   └── index_manager.py    (chargement/choix de l'index)
-│   │   └── db/
-│   │       ├── database.py
-│   │       └── models.py
-│   ├── scripts/                    (exécutés hors ligne)
-│   │   ├── 01_prepare_dataset.py
-│   │   ├── 02_extract_descriptors.py
-│   │   ├── 03_build_indexes.py
-│   │   └── 04_fill_database.py
-│   └── tests/
+│   │   │   └── vgg.py                (extracteur VGG16, GAP 512-d)
+│   │   └── indexing/
+│   │       ├── __init__.py
+│   │       ├── distances.py          (euclidienne, L1, cosinus, chi²)
+│   │       ├── vptree.py             (VP-Tree, démonstration ≤100k)
+│   │       ├── faiss_index.py        (FAISS, production 1M+)
+│   │       └── index_manager.py      (gestionnaire unifié)
+│   ├── scripts/                      (exécutés hors ligne)
+│   │   ├── 03_parse_descriptors.py   (parsing MPEG-7 → .npy)
+│   │   ├── 03_build_indexes.py       (construction VP-Tree + FAISS)
+│   │   ├── 04_build_metadata.py      (tags + licences → metadata.jsonl)
+│   │   ├── 04b_load_mongo.py         (chargement MongoDB)
+│   │   ├── 05_vgg_similar.py         (test recherche VGG16)
+│   │   ├── 06_try_search.py          (test recherche MPEG-7)
+│   │   ├── 07_benchmark_indexes.py   (comparaison performances)
+│   │   ├── check_mongo.py            (vérification connexion MongoDB)
+│   │   ├── normalize_features.py     (normalisation L2/z-score/minmax)
+│   │   └── search_by_id.py           (recherche avec/sans normalisation)
+│   └── tests/                        (VIDE - à implémenter)
 │
-├── frontend/
-│   ├── index.html
-│   ├── css/style.css
-│   ├── js/
-│   │   ├── api.js                  (appels au serveur)
-│   │   ├── search.js               (formulaire, choix des descripteurs)
-│   │   ├── results.js              (affichage, relance depuis un résultat)
-│   │   └── main.js
-│   └── assets/
-│
-├── notebooks/                      (essais Jupyter, comparaisons de descripteurs)
-└── docs/                           (rapport, schémas, captures)
+├── frontend/                         (VIDE - à implémenter)
+├── notebooks/
+│   └── 01_exploration_donnees.ipynb  (exploration MIRFLICKR)
+└── docs/                             (VIDE - pour le rapport)
 ```
 
-> La structure exacte sous chaque dossier (noms des sous-dossiers, extensions des fichiers) est à relever à l'étape 2 et à reporter ici.
+> **Note** : Les dossiers marqués VIDE sont à implémenter (API FastAPI, base de données, frontend, tests, documentation).
 
 ### 2.4 Contrat d'API (à définir avant le code)
 

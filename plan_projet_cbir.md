@@ -15,6 +15,7 @@
 **Deux jeux de données** :
 1. **MIRFLICKR-1M** : 1 million d'images. Ce qui est réellement disponible dans `data/mirflickr/raw` :
    - **2 descripteurs MPEG-7 fournis** : Edge Histogram (`features_edgehistogram`, **150 valeurs** par image : 80 locales + 5 globales + 65 semi-globales) et Homogeneous Texture (`features_homogeneoustexture`, **43 valeurs** par image). Un fichier texte par image, une valeur par ligne. Rien à calculer pour ceux-là, mais **aucun descripteur couleur n'est fourni**.
+   - **Descripteurs VGG16 (deep learning)** : **512 dimensions** par image, extraits avec VGG16 pré-entraîné sur ImageNet (conv features + Global Average Pooling). Fichiers : `data/features/vgg16_gap512_1M.npy` (~2 GB), modèles dans `data/models/vgg16_features_imagenet.pth`. **Recommandé pour la similarité visuelle sémantique** (performances bien supérieures à MPEG-7).
    - **Tags** (`tags`) : source des mots-clés.
    - **Licences** (`license`) : fichier texte clé/valeur (date de dépôt, licence, URL de la licence Creative Commons, titre, nom/pseudo/identifiant du propriétaire). **Selon les fichiers, il contient aussi `Photo id`, `Photo url` (image Flickr) et `Web url` (page Flickr de la photo) ; ces trois lignes sont absentes de certains fichiers** (voir « Constats sur les données réelles » ci-dessous).
    - **Vignettes uniquement** (`thumbs1-33`, `thumbs34-66`, `thumbs67-100`) : pas d'images en pleine taille en local (l'exemple `im1.jpg` fait 64×64 px). L'affichage repose sur les vignettes ; l'image complète s'ouvre via l'URL Flickr quand elle existe dans le fichier `license` (pas pour toutes les images, et certains liens Flickr peuvent être morts).
@@ -22,11 +23,11 @@
 
 **Fonctionnalités minimales** :
 - Requête par mots-clés **ET/OU** par image (image de la base ou image issue d'un résultat précédent).
-- L'utilisateur choisit le ou les descripteurs utilisés par le serveur.
+- L'utilisateur choisit le ou les descripteurs utilisés par le serveur (**MPEG-7** : Edge Histogram, Homogeneous Texture ; **Deep Learning** : VGG16).
 - Le serveur calcule/utilise les descripteurs, cherche les images similaires et renvoie la liste des URLs.
 - Affichage au client : image requête + images similaires triées par distance croissante (la plus ressemblante en premier ; la diapo dit « ordre croissant de ressemblance », à interpréter ainsi, à confirmer avec l'enseignant).
 - Relance d'une recherche en cliquant sur une image résultat.
-- Temps de recherche optimisé grâce à une bonne structure de l'espace des index (la diapo cite « exemple VP-Tree, etc. » : le VP-Tree est un exemple, pas une obligation).
+- Temps de recherche optimisé grâce à une bonne structure de l'espace des index (FAISS pour 1M+ vectors, VP-Tree pour démonstration).
 
 **Livrables d'évaluation** (diapo du cours) : **rapport**, **démo déployée sur PC LIASA**, **code source + base de données**. Critères : méthodologie, conception, sérieux (assiduité).
 > ⚠️ À confirmer : la diapo affiche une date limite du 26 octobre **2025** ; vérifier la date en vigueur.
@@ -44,7 +45,8 @@
 | Calcul numérique | **NumPy**, **SciPy** | – |
 | Descripteurs image (Objects, et couleur sur vignettes MIRFLICKR si souhaité) | **scikit-image** (LBP, HOG), **OpenCV** (histogrammes couleur) | Pillow pour le chargement |
 | Descripteurs MIRFLICKR | **Edge Histogram** + **Homogeneous Texture** (fournis, à parser) | – |
-| Index de similarité | **VP-Tree** (exemple cité par le sujet) pour la démonstration + **FAISS** ou `scikit-learn NearestNeighbors` pour la vitesse | `scipy.spatial.cKDTree` |
+| **Descripteurs deep learning (MIRFLICKR)** | **VGG16** (conv features + Global Average Pooling → **512 dims**, L2-normalisés) | ResNet, EfficientNet |
+| Index de similarité | **FAISS** (production, 1M+ vectors) + **VP-Tree** (démonstration, ≤100k vectors) | `scikit-learn NearestNeighbors`, `scipy.spatial.cKDTree` |
 | Base de données | **MongoDB** (métadonnées : URLs, tags, licences) | Elasticsearch (lourd) |
 | Accès MongoDB depuis Python | **pymongo** | motor (version asynchrone) |
 | Recherche texte (mots-clés) | **Index texte MongoDB** (`$text`) ou index sur le champ liste de mots-clés (ET/OU) | Elasticsearch si besoin de plus de souplesse (pluriels, lemmes) |
@@ -58,17 +60,17 @@
 
 | Élément | Diapos | Ce plan |
 |---|---|---|
-| Descripteurs MIRFLICKR | MPEG-7 fournis | Edge Histogram + Homogeneous Texture, parsés |
+| Descripteurs MIRFLICKR | MPEG-7 fournis | Edge Histogram + Homogeneous Texture (MPEG-7) + **VGG16 (deep learning, recommandé)** |
 | Descripteurs Objects | À calculer (couleur, LBP, HOG) | `color_hist`, `lbp`, `hog` |
 | Client | Application web | HTML/CSS/JS (Streamlit en plan B) |
 | Serveur | Node.js, IIS, Django, Flask, Streamlit ; web service FastAPI | Python + **FastAPI** |
 | Échange | XML ou JSON | JSON |
 | Base de données | Images en répertoires, URLs en BD ; MongoDB / Elasticsearch listés | **MongoDB** (URLs, tags, licences) |
-| Index | VP-Tree en exemple | VP-Tree + FAISS / `NearestNeighbors` |
+| Index | VP-Tree en exemple | **FAISS** (production) + VP-Tree (démonstration) |
 | Outils | Python, FastAPI, MongoDB, Elasticsearch, Anaconda/Jupyter/Spyder, Streamlit, Flask, Django, HTML/CSS/JS, SciPy, NumPy, Docker | Tous cohérents ; Elasticsearch, Flask, Django, Streamlit en alternatives |
 | Évaluation | Rapport, démo sur PC LIASA, code source + BD | Étapes 12 et 13 |
 
-Bibliothèques ajoutées par ce plan et absentes de la diapo « Outils » (justifiées par les descripteurs LBP/HOG/couleur, l'index et l'évaluation) : scikit-image, OpenCV, FAISS, scikit-learn, pymongo, Pillow, Pandas, joblib, pytest, Matplotlib.
+Bibliothèques ajoutées par ce plan et absentes de la diapo « Outils » (justifiées par les descripteurs LBP/HOG/couleur, l'index, les descripteurs deep learning et l'évaluation) : **PyTorch**, **torchvision**, scikit-image, OpenCV, FAISS, scikit-learn, pymongo, Pillow, Pandas, joblib, pytest, Matplotlib.
 
 **Décision à prendre tôt** : jeu de travail sur MIRFLICKR. Le choix actuel est d'utiliser **le MIRFLICKR-1M complet** en local. Garder un sous-ensemble de 10 000 à 50 000 images pour développer vite, tester chaque module et, si besoin, pour un déploiement en ligne limité en mémoire.
 
@@ -307,6 +309,23 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 - **Livrable** : modules `color_hist`, `lbp`, `hog` et fichiers `.npy`.
 - **Validation** : deux images visuellement proches ont une distance plus faible que deux images différentes (test sur quelques exemples).
 
+### Étape 5b : Extraction des descripteurs VGG16 (Deep Learning) - RECOMMANDÉ
+
+- **Objectif** : extraire des descripteurs de haute qualité (512 dimensions) avec un réseau pré-entraîné sur ImageNet.
+- **Justification** : les descripteurs MPEG-7 (Edge Histogram, Homogeneous Texture) sont peu performants pour la similarité sémantique. VGG16 offre une similarité visuelle bien supérieure (testé et validé).
+- **Actions** :
+  1. Charger VGG16 pré-entraîné (ImageNet) via PyTorch/torchvision.
+  2. Utiliser les features convolutionnels + Global Average Pooling → **512 dimensions** (plus compact que 4096-d FC).
+  3. Prétraiter les vignettes 64×64 : upscale à 224×224, normalisation ImageNet (mean, std).
+  4. Extraire par batches (GPU recommandé, CPU possible mais lent : ~2-3 jours pour 1M).
+  5. L2-normaliser tous les vecteurs (distance euclidienne = similarité cosinus).
+  6. Sauvegarder dans `data/features/vgg16_gap512_1M.npy` (~2 GB).
+  7. Sauvegarder les poids du modèle dans `data/models/vgg16_features_imagenet.pth` pour usage hors ligne.
+- **Outils** : **PyTorch**, **torchvision**, NumPy, GPU (optionnel mais recommandé).
+- **Contexte à donner à Claude** : le code déjà écrit dans `backend/app/descriptors/vgg.py` et `backend/scripts/05_vgg_similar.py`.
+- **Livrable** : `vgg16_gap512_1M.npy`, `vgg16_features_imagenet.pth`, script `05_extract_vgg.py` (si nouveau), module `backend/app/descriptors/vgg.py`.
+- **Validation** : rechercher quelques images et vérifier que les résultats sont visuellement cohérents (bien meilleurs qu'avec MPEG-7). Script de test : `python backend/scripts/05_vgg_similar.py <image_id>`.
+
 ### Étape 6 : Distances et recherche par similarité (version de référence)
 
 - **Objectif** : une recherche correcte, même lente, qui servira de référence.
@@ -323,14 +342,15 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 
 - **Objectif** : respecter l'exigence « temps de recherche optimal ».
 - **Actions** :
-  1. Implémenter le **VP-Tree** (construction, recherche des k plus proches voisins) pour un descripteur.
-  2. Ajouter une alternative rapide (FAISS ou `NearestNeighbors`) pour la base complète de 1 M.
+  1. Implémenter le **VP-Tree** (construction, recherche des k plus proches voisins) pour un descripteur (démonstration sur ≤100k images).
+  2. Implémenter **FAISS** (Flat index) pour la base complète de 1M (production, temps de requête ~1-10ms).
   3. Sérialiser les index sur disque et les charger au démarrage du serveur.
   4. **Comparer** : temps de la recherche exhaustive, du VP-Tree et de FAISS sur 100 requêtes, à plusieurs tailles de base (10k, 100k, 1M si possible) (tableau pour le rapport).
+  5. Construire les index pour **VGG16** (recommandé), Edge Histogram et Homogeneous Texture.
 - **Outils / sources** : Python, FAISS (`faiss-cpu`), scikit-learn, `joblib`/`pickle` ; idées d'indexation dans https://github.com/MKLab-ITI/multimedia-indexing (code Java, donc source d'inspiration uniquement).
 - **Contexte à donner à Claude** : volumétrie (nombre de vecteurs, dimension), distance utilisée, mémoire disponible sur le PC cible.
 - **Livrable** : `vptree.py`, `faiss_index.py`, `index_manager.py`, script `03_build_indexes.py`, tableau comparatif.
-- **Validation** : les résultats du VP-Tree correspondent à ceux de la recherche exhaustive (même top-k) et le temps de recherche est nettement inférieur.
+- **Validation** : les résultats de FAISS correspondent à ceux de la recherche exhaustive (même top-k, recall@k = 100%) et le temps de recherche est nettement inférieur.
 
 ### Étape 8 : Base de données et recherche textuelle
 

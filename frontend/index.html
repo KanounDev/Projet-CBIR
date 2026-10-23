@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recherche d'images – MIRFLICKR-1M</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== En-tête : titre + état du serveur ===== -->
+<header class="topbar">
+  <h1>Recherche d'images <small>MIRFLICKR-1M</small></h1>
+  <p id="server-status" class="server-status" data-state="unknown">Serveur : vérification…</p>
+</header>
+
+<main class="layout">
+
+  <!-- ===== Colonne gauche : formulaire de recherche ===== -->
+  <aside class="panel">
+    <form id="search-form" novalidate>
+
+      <!-- Recherche textuelle -->
+      <fieldset>
+        <legend>Par mots-clés</legend>
+        <label for="keywords" class="sr-only">Mots-clés</label>
+        <input type="text" id="keywords" placeholder="ex. sunset beach" autocomplete="off">
+        <p class="hint">Séparés par une virgule ou un espace.</p>
+        <div class="row">
+          <label><input type="radio" name="keyword_mode" value="and" checked> Tous les mots (ET)</label>
+          <label><input type="radio" name="keyword_mode" value="or"> Au moins un (OU)</label>
+        </div>
+      </fieldset>
+
+      <!-- Recherche visuelle : image requête -->
+      <fieldset>
+        <legend>Par image</legend>
+
+        <!-- Option 1: ID de la base -->
+        <div class="row">
+          <label for="query-id">Identifiant de l'image</label>
+          <input type="number" id="query-id" min="0" max="999999" placeholder="ex. 42">
+          <button type="button" id="clear-query" class="link-btn">Effacer</button>
+        </div>
+        <div id="query-preview" class="query-preview" hidden></div>
+
+        <!-- Option 2: Upload d'une image externe -->
+        <div class="upload-section">
+          <label for="upload-file" class="upload-label">Ou importer une image</label>
+          <input type="file" id="upload-file" accept="image/*" hidden>
+          <button type="button" id="upload-btn" class="upload-btn">Choisir un fichier</button>
+          <span id="upload-filename" class="upload-filename"></span>
+        </div>
+        <div id="upload-preview" class="upload-preview" hidden>
+          <img id="upload-preview-img" alt="Aperçu">
+          <span id="upload-info"></span>
+          <button type="button" id="clear-upload" class="link-btn">Supprimer</button>
+        </div>
+
+        <!-- Galerie de la base (chargée à la première ouverture) -->
+        <details id="gallery">
+          <summary>Choisir dans la galerie</summary>
+          <div id="gallery-grid" class="gallery-grid"></div>
+          <div class="pager">
+            <button type="button" id="gallery-prev">Précédent</button>
+            <span id="gallery-page">Page 1</span>
+            <button type="button" id="gallery-next">Suivant</button>
+          </div>
+        </details>
+      </fieldset>
+
+      <!-- Paramètres de la recherche visuelle -->
+      <fieldset>
+        <legend>Paramètres visuels</legend>
+        <div class="checks" id="descriptors">
+          <label><input type="checkbox" name="descriptor" value="vgg16" checked> VGG16</label>
+          <label><input type="checkbox" name="descriptor" value="edgehistogram"> Edge Histogram</label>
+          <label><input type="checkbox" name="descriptor" value="homogeneoustexture"> Homogeneous Texture</label>
+        </div>
+        <div class="grid-2">
+          <label>Métrique
+            <select id="metric">
+              <option value="euclidean">Euclidienne</option>
+              <option value="cosine">Cosinus</option>
+            </select>
+          </label>
+          <label>Index
+            <select id="index-type">
+              <option value="faiss">FAISS</option>
+              <option value="brute">Exhaustif (brute)</option>
+            </select>
+          </label>
+          <label>Résultats (k)
+            <input type="number" id="k" min="1" max="200" value="20">
+          </label>
+        </div>
+        <p class="hint" id="metric-hint">La métrique et les options varient selon le descripteur sélectionné.</p>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" id="submit-btn" class="primary">Rechercher</button>
+        <button type="button" id="reset-btn">Réinitialiser</button>
+      </div>
+    </form>
+  </aside>
+
+  <!-- ===== Colonne droite : résultats ===== -->
+  <section class="results" aria-live="polite">
+    <div id="loading" class="loading" hidden><span class="spinner" aria-hidden="true"></span><span class="loading-text"> Recherche en cours…</span></div>
+    <div id="error" class="error" role="alert" hidden></div>
+    <p id="empty" class="empty">Saisissez des mots-clés, ou indiquez une image, puis lancez la recherche. Cliquez ensuite sur une vignette pour chercher des images similaires.</p>
+
+    <div id="query-block" hidden>
+      <h2>Image requête</h2>
+      <div id="query-card"></div>
+    </div>
+
+    <div id="results-block" hidden>
+      <h2>Résultats <span id="results-info" class="info"></span></h2>
+      <div id="results-grid" class="grid"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

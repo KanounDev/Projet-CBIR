@@ -1,0 +1,55 @@
+# Docker ignore file - exclude from Docker build context
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Data (will be mounted as volumes)
+data/
+!data/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Notebooks
+notebooks/
+
+# Evaluation results
+backend/evaluation_results/
+
+# Screenshots and images
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# Test files
+.pytest_cache/
+.coverage
+htmlcov/

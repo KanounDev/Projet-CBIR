@@ -185,14 +185,16 @@ class IndexManager:
         query: np.ndarray,
         metric: str = "euclidean",
         k: int = 10,
+        exclude_id: Optional[int] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Search using FAISS index.
 
         Args:
             descriptor: Descriptor name
             query: Query vector (d,)
-            metric: Distance metric (only euclidean supported for now)
+            metric: Distance metric (euclidean, cosine, chi2, l1)
             k: Number of neighbors
+            exclude_id: Optional image ID to exclude from results
 
         Returns:
             Tuple of (image_ids, distances)
@@ -200,10 +202,18 @@ class IndexManager:
         if not FAISS_AVAILABLE:
             raise ImportError("FAISS not available. Install with: pip install faiss-cpu")
 
+        # VGG16 features are L2-normalized, so euclidean and cosine give identical rankings
+        # Fall back to euclidean index for cosine queries (saves 2GB memory)
+        actual_metric = metric
+        if descriptor == "vgg16" and metric == "cosine":
+            actual_metric = "euclidean"
+            # Normalize query vector for cosine similarity
+            query = query / (np.linalg.norm(query) + 1e-10)
+
         # Load index (lazy)
-        key = (descriptor, metric)
+        key = (descriptor, actual_metric)
         if key not in self._faiss_indexes:
-            index_path = self.indexes_dir / f"{descriptor}_{metric}.faiss"
+            index_path = self.indexes_dir / f"{descriptor}_{actual_metric}.faiss"
             if not index_path.exists():
                 raise FileNotFoundError(f"FAISS index not found: {index_path}")
 
@@ -211,11 +221,21 @@ class IndexManager:
 
         index = self._faiss_indexes[key]
 
-        # Search
+        # Search for k+1 neighbors to account for potential exclusion
+        search_k = k + 1 if exclude_id is not None else k
         query = np.asarray(query, dtype=np.float32).reshape(1, -1)
-        distances, ids = index.search(query, k)
+        distances, ids = index.search(query, search_k)
 
-        return ids[0], distances[0]
+        # Exclude query image if requested
+        if exclude_id is not None:
+            mask = ids[0] != exclude_id
+            ids = ids[0][mask][:k]
+            distances = distances[0][mask][:k]
+        else:
+            ids = ids[0]
+            distances = distances[0]
+
+        return ids, distances
 
     def search_vptree(
         self,
@@ -279,7 +299,7 @@ class IndexManager:
         if index_type == "brute":
             return self.search_brute_force(descriptor, query, metric, k, exclude_id)
         elif index_type == "faiss":
-            return self.search_faiss(descriptor, query, metric, k)
+            return self.search_faiss(descriptor, query, metric, k, exclude_id)
         elif index_type == "vptree":
             return self.search_vptree(descriptor, query, metric, k)
         else:

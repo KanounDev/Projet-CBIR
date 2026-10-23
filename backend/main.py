@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router as api_router
+from app.api.upload import router as upload_router
 from app.db.mongodb import check_connection, get_stats
 from app.indexing.index_manager import get_index_manager
 
@@ -137,6 +138,7 @@ else:
 
 # Include API routes
 app.include_router(api_router, prefix="/api")
+app.include_router(upload_router, prefix="/api")
 
 
 # Root endpoint

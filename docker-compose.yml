@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build: .
+    container_name: cbir-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DATA_DIR=/app/data
+    volumes:
+      # Mount data directories (NOT copied into image)
+      - ./data/features:/app/data/features:ro
+      - ./data/indexes:/app/data/indexes:ro
+      - ./data/metadata:/app/data/metadata:ro
+      - ./data/mirflickr:/app/data/mirflickr:ro
+      - ./data/models:/app/data/models:ro
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - cbir-network
+
+  # MongoDB Database
+  mongo:
+    image: mongo:7.0
+    container_name: cbir-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      # Persist MongoDB data
+      - mongo-data:/data/db
+      # Optional: Restore from backup on first run
+      # - ./data/mongo_backup:/docker-entrypoint-initdb.d:ro
+    environment:
+      - MONGO_INITDB_DATABASE=cbir
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - cbir-network
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  cbir-network:
+    driver: bridge

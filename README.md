@@ -1,0 +1,564 @@
+# CBIR - Content-Based Image Retrieval System
+
+> Moteur de recherche d'images par similarité visuelle et mots-clés pour le dataset MIRFLICKR-1M (1 million d'images).
+
+## 📋 Table des matières
+
+- [Architecture du projet](#-architecture-du-projet)
+- [Prérequis](#-prérequis)
+- [Installation](#-installation)
+- [Utilisation](#-utilisation)
+- [Structure des données](#-structure-des-données)
+- [API Endpoints](#-api-endpoints)
+- [Descripteurs disponibles](#-descripteurs-disponibles)
+- [Métriques de distance](#-métriques-de-distance)
+- [Résultats d'évaluation](#-résultats-dévaluation)
+- [Limitations connues](#-limitations-connues)
+
+---
+
+## 🏗 Architecture du projet
+
+```
+┌────────────────┐   requête (mots-clés,    ┌─────────────────────────────┐
+│  Client web    │   image, descripteurs)   │  Serveur FastAPI            │
+│ HTML/CSS/JS    │ ───────────────────────► │  (Python 3.11+)             │
+│                │                          │                             │
+│                │ ◄─────────────────────── │  ┌───────────────────────┐  │
+│                │   liste d'URLs triées    │  │ Routes API (JSON)     │  │
+│                │   + scores               │  ├───────────────────────┤  │
+└────────────────┘                          │  │ Services:            │  │
+                                            │  │  - text_search.py    │  │
+                                            │  │  - search_service.py │  │
+                                            │  │  - visual_search.py  │  │
+                                            │  ├───────────────────────┤  │
+                                            │  │ Indexing:            │  │
+                                            │  │  - index_manager.py  │  │
+                                            │  │  - faiss_index.py    │  │
+                                            │  │  - vptree.py         │  │
+                                            │  │  - distances.py      │  │
+                                            │  └──────────┬────────────┘  │
+                                            └─────────────┼───────────────┘
+                                                          │
+                          ┌───────────────────────────────┼──────────────────┐
+                          │                               │                  │
+                  ┌───────▼────────┐            ┌─────────▼────────┐  ┌──────▼──────────┐
+                  │ MongoDB        │            │ Fichiers .npy    │  │ Images/vignettes│
+                  │                │            │ (descripteurs)   │  │ (fichiers .jpg) │
+                  │ - chemins      │            │                  │  │                 │
+                  │ - URLs Flickr  │            │ - vgg16_gap512   │  │ - thumbs1-33/   │
+                  │ - tags         │            │ - edgehistogram  │  │ - thumbs34-66/  │
+                  │ - licences     │            │ - homogtexture   │  │ - thumbs67-100/ │
+                  └────────────────┘            └──────────────────┘  └─────────────────┘
+```
+
+### Structure des répertoires
+
+```
+projet-CBIR/
+├── start.bat                    # Script de lancement (Windows)
+├── README.md                    # Ce fichier
+├── plan_projet_cbir.md          # Plan de développement
+│
+├── backend/
+│   ├── main.py                  # Point d'entrée FastAPI
+│   ├── requirements.txt         # Dépendances Python
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── routes.py        # Endpoints API
+│   │   │   └── upload.py        # Upload d'images
+│   │   ├── db/
+│   │   │   └── mongodb.py       # Connexion MongoDB
+│   │   ├── schemas/
+│   │   │   └── search.py        # Modèles Pydantic
+│   │   ├── services/
+│   │   │   ├── search_service.py    # Service de recherche unifié
+│   │   │   ├── text_search.py       # Recherche par mots-clés
+│   │   │   └── visual_search.py     # Recherche par similarité
+│   │   ├── descriptors/
+│   │   │   └── vgg.py           # Extracteur VGG16
+│   │   └── indexing/
+│   │       ├── index_manager.py # Gestionnaire d'index
+│   │       ├── faiss_index.py   # Index FAISS (production)
+│   │       ├── vptree.py        # VP-Tree (démonstration)
+│   │       └── distances.py     # Fonctions de distance
+│   ├── scripts/
+│   │   ├── parse_descriptors.py # Parsing MPEG-7 → .npy
+│   │   ├── build_indexes.py     # Construction des index
+│   │   ├── build_metadata.py    # Tags + licences → metadata
+│   │   ├── load_mongo.py        # Chargement MongoDB
+│   │   └── comprehensive_evaluation.py  # Évaluation complète
+│   └── evaluation_results/
+│       ├── evaluation_results.json
+│       └── evaluation_report.md
+│
+├── frontend/
+│   ├── index.html               # Interface web
+│   ├── style.css
+│   └── app.js                   # Logique JavaScript
+│
+├── data/
+│   ├── mirflickr/
+│   │   └── raw/                 # Données brutes (À TÉLÉCHARGER)
+│   │       ├── features_edgehistogram/
+│   │       ├── features_homogeneoustexture/
+│   │       ├── tags/
+│   │       ├── license/
+│   │       ├── thumbs1-33/
+│   │       ├── thumbs34-66/
+│   │       └── thumbs67-100/
+│   ├── features/                # Descripteurs extraits (générés par scripts)
+│   │   ├── vgg16_gap512_1M.npy
+│   │   ├── edgehistogram.npy
+│   │   └── homogeneoustexture.npy
+│   ├── indexes/                 # Index de recherche (générés par scripts)
+│   │   ├── vgg16_euclidean.faiss
+│   │   ├── edgehistogram_euclidean.faiss
+│   │   └── ...
+│   ├── metadata/                # Métadonnées (générées par scripts)
+│   │   └── metadata.jsonl
+│   └── models/                  # Modèles pré-entraînés
+│       └── vgg16_features_imagenet.pth
+│
+└── notebooks/
+    └── exploration_donnees.ipynb
+```
+
+---
+
+## ⚙️ Prérequis
+
+### Logiciels requis
+
+| Logiciel | Version | Usage |
+|----------|---------|-------|
+| **Python** | 3.11+ | Runtime principal |
+| **MongoDB** | 7.0+ | Base de données métadonnées |
+| **Git** | 2.0+ | Gestion de version |
+
+### Bibliothèques Python principales
+
+- **FastAPI** + Uvicorn (API web)
+- **NumPy**, **SciPy** (calcul numérique)
+- **FAISS** (index de similarité)
+- **PyMongo** (MongoDB)
+- **PyTorch** + torchvision (VGG16)
+- **Pillow**, **OpenCV** (traitement d'images)
+
+---
+
+## 📥 Installation
+
+### 1. Cloner le repository
+
+```bash
+git clone <repository-url>
+cd projet-CBIR
+```
+
+### 2. Télécharger les données MIRFLICKR-1M
+
+**Télécharger depuis** : https://press.liacs.nl/mirflickr/mirdownload.html
+
+**Fichiers requis dans `data/mirflickr/raw/`** :
+
+| Archive | Contenu | Taille | Obligatoire |
+|---------|---------|--------|-------------|
+| `mirflickr1m.zip` | Vignettes (thumbs1-33, thumbs34-66, thumbs67-100) | ~10 GB | ✅ Oui |
+| `mirflickr1m_tags.zip` | Tags (mots-clés) | ~100 MB | ✅ Oui |
+| `mirflickr1m_license.zip` | Licences et URLs Flickr | ~50 MB | ✅ Oui |
+| `edgehistogram.zip` | Descripteurs Edge Histogram (MPEG-7) | ~600 MB | ✅ Oui |
+| `homogentexture.zip` | Descripteurs Homogeneous Texture (MPEG-7) | ~200 MB | ✅ Oui |
+
+**Structure attendue après extraction** :
+
+```
+data/mirflickr/raw/
+├── thumbs1-33/          # 330,000 vignettes
+├── thumbs34-66/         # 330,000 vignettes
+├── thumbs67-100/        # 340,000 vignettes
+├── tags/                # 1,000,000 fichiers .txt
+├── license/             # 1,000,000 fichiers .txt
+├── features_edgehistogram/
+│   └── features_edgehistogram/
+│       └── <sous-dossiers>/<id>.txt
+└── features_homogeneoustexture/
+    └── features_homogeneoustexture/
+        └── <sous-dossiers>/<id>.txt
+```
+
+### 3. Créer l'environnement Python
+
+```bash
+# Créer un environnement virtuel
+python -m venv venv
+
+# Activer l'environnement
+# Windows:
+venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
+
+# Installer les dépendances
+cd backend
+pip install -r requirements.txt
+```
+
+### 4. Installer et configurer MongoDB
+
+```bash
+# Windows: Télécharger depuis https://www.mongodb.com/try/download/community
+# Linux: sudo apt-get install mongodb
+# Mac: brew install mongodb-community
+
+# Démarrer MongoDB
+mongod --dbpath /path/to/data/db
+
+# Ou utiliser le service Windows
+net start MongoDB
+```
+
+### 5. Préparer les données (exécution unique)
+
+Les scripts suivants génèrent les fichiers nécessaires à partir des données brutes :
+
+```bash
+cd backend
+
+# Étape 1: Parser les descripteurs MPEG-7 → fichiers .npy
+python scripts/parse_descriptors.py
+
+# Étape 2: Construire les métadonnées (tags + licences)
+python scripts/build_metadata.py
+
+# Étape 3: Charger les métadonnées dans MongoDB
+python scripts/load_mongo.py
+
+# Étape 4: Construire les index FAISS et VP-Tree
+python scripts/build_indexes.py
+
+# Étape 5: Construire l'index VGG16 (si features existent)
+python scripts/build_vgg16_index.py
+```
+
+**Note**: Les descripteurs VGG16 (`vgg16_gap512_1M.npy`) sont déjà fournis dans `data/features/`. Si vous devez les régénérer, utilisez le script d'extraction VGG16.
+
+---
+
+## 🚀 Utilisation
+
+### Lancement rapide (Windows)
+
+Double-cliquez sur **`start.bat`** ou exécutez :
+
+```bash
+start.bat
+```
+
+Ce script :
+1. Vérifie les prérequis (Python, MongoDB, données)
+2. Installe les dépendances si nécessaire
+3. Démarre le serveur FastAPI
+4. Ouvre l'interface web dans le navigateur
+
+### Lancement manuel
+
+```bash
+# Terminal 1: Démarrer MongoDB (si pas déjà en cours)
+mongod --dbpath ./data/mongo
+
+# Terminal 2: Démarrer le backend
+cd backend
+python main.py
+
+# Navigateur: Ouvrir l'interface
+# Ouvrir frontend/index.html manuellement dans le navigateur
+```
+
+### Accès à l'application
+
+| URL | Description |
+|-----|-------------|
+| `frontend/index.html` | Interface web (ouvrir manuellement) |
+| `http://localhost:8000/docs` | Documentation API (Swagger) |
+| `http://localhost:8000/api/health` | Vérification santé serveur |
+
+---
+
+## 📊 Structure des données
+
+### Données téléchargées (obligatoires)
+
+Ces données doivent être téléchargées depuis https://press.liacs.nl/mirflickr/mirdownload.html :
+
+| Dossier | Description | Taille |
+|---------|-------------|--------|
+| `data/mirflickr/raw/thumbs*/` | Vignettes 64×64 px | ~10 GB |
+| `data/mirflickr/raw/tags/` | Mots-clés (1 fichier/image) | ~100 MB |
+| `data/mirflickr/raw/license/` | Métadonnées Flickr | ~50 MB |
+| `data/mirflickr/raw/features_edgehistogram/` | Edge Histogram MPEG-7 | ~600 MB |
+| `data/mirflickr/raw/features_homogeneoustexture/` | Homogeneous Texture MPEG-7 | ~200 MB |
+
+### Données générées par les scripts
+
+Ces données sont créées automatiquement par les scripts Python :
+
+| Dossier/Fichier | Script de génération | Taille |
+|-----------------|----------------------|--------|
+| `data/features/*.npy` | `parse_descriptors.py` | ~3 GB |
+| `data/indexes/*.faiss` | `build_indexes.py` | ~4 GB |
+| `data/indexes/*.vptree` | `build_vptree_indexes.py` | ~5 MB |
+| `data/metadata/metadata.jsonl` | `build_metadata.py` | ~200 MB |
+| MongoDB (images collection) | `load_mongo.py` | ~500 MB |
+
+### Règle d'identifiants
+
+**Important** : Les images MIRFLICKR sont numérotées de 1 à 1,000,000, mais les IDs dans la base de données et les descripteurs vont de 0 à 999,999.
+
+```
+ID = numéro_image - 1
+```
+
+Exemple : `im42.jpg` ↔ ID `41`
+
+---
+
+## 🔌 API Endpoints
+
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/health` | GET | État du serveur |
+| `/api/descriptors` | GET | Liste des descripteurs disponibles |
+| `/api/images` | GET | Parcourir les images (pagination) |
+| `/api/search` | POST | Recherche textuelle et/ou visuelle |
+| `/api/upload` | POST | Upload d'une image requête externe |
+
+### Exemple de requête de recherche
+
+```bash
+curl -X POST "http://localhost:8000/api/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keywords": ["sunset", "beach"],
+    "keyword_mode": "and",
+    "query_image_id": 42,
+    "descriptors": ["vgg16"],
+    "metrics": {"vgg16": "euclidean"},
+    "index_type": "faiss",
+    "k": 20
+  }'
+```
+
+---
+
+## 🎯 Descripteurs disponibles
+
+| Descripteur | Dimensions | Type | Recommandé pour |
+|-------------|------------|------|-----------------|
+| **vgg16** | 512 | Deep Learning (CNN) | Similarité sémantique ✅ |
+| **edgehistogram** | 150 | MPEG-7 | Patterns de contours |
+| **homogeneoustexture** | 43 | MPEG-7 | Textures |
+
+### Comparaison des performances
+
+| Descripteur | Temps moyen (FAISS) | Consistance vs Brute-force |
+|-------------|---------------------|----------------------------|
+| vgg16 | ~165 ms | 100% ✅ |
+| edgehistogram | ~50 ms | 100% ✅ |
+| homogeneoustexture | ~12 ms | 100% ✅ |
+
+---
+
+## 📏 Métriques de distance
+
+| Métrique | Compatible FAISS | Recommandée pour |
+|----------|------------------|------------------|
+| **euclidean** | ✅ Oui | Tous descripteurs |
+| **cosine** | ✅ Oui | VGG16, EdgeHistogram |
+| **chi2** | ❌ Non* | Edge Histogram (brute-force uniquement) |
+| **l1** | ❌ Non* | Tous (brute-force uniquement) |
+
+*FAISS ne supporte pas nativement chi2 et L1, utilisez brute-force pour ces métriques.
+
+---
+
+## 📈 Résultats d'évaluation
+
+### Performances des index
+
+| Descripteur | Brute Force | FAISS | Speedup |
+|-------------|-------------|-------|---------|
+| vgg16 | 1714 ms | 328 ms | **5.2x** |
+| edgehistogram | 393 ms | 93 ms | **4.2x** |
+| homogeneoustexture | 140 ms | 18 ms | **7.8x** |
+
+### Taux de self-retrieval
+
+Tous les descripteurs avec métriques euclidean/cosine obtiennent **100% de self-retrieval** (l'image requête est toujours trouvée en première position).
+
+### Recherche textuelle
+
+| Mode | Temps moyen | Exemple |
+|------|-------------|---------|
+| AND | ~5 ms | "sunset AND beach" |
+| OR | ~2 ms | "sunset OR beach" |
+
+---
+
+## ⚠️ Limitations connues
+
+### Données
+
+- **Vignettes uniquement** : Les images font 64×64 px (pas d'images en pleine taille en local)
+- **Pas de descripteur couleur** : MIRFLICKR ne fournit pas de descripteur couleur MPEG-7
+- **URLs Flickr optionnelles** : Seulement ~58% des images ont une URL Flickr valide
+
+### Index
+
+- **VP-Tree** : Limité à 50,000 images (démonstration uniquement)
+- **FAISS avec chi2/L1** : Inconsistant (utiliser brute-force)
+
+### Performances
+
+- **Premier démarrage lent** : Chargement des index en mémoire (~30 secondes)
+- **Recherche brute-force** : 1-3 secondes pour 1M d'images
+
+---
+
+## 🐳 Déploiement avec Docker (Optionnel)
+
+### Prérequis Docker
+
+- **Docker** 20.10+ installé
+- **Docker Compose** 2.0+ installé
+- Au moins **8 GB de RAM** disponible pour Docker
+
+### Architecture Docker
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Docker Network: cbir-network                           │
+│                                                          │
+│  ┌──────────────────┐         ┌──────────────────┐     │
+│  │  cbir-backend    │         │  cbir-mongo      │     │
+│  │  Port: 8000      │◄───────►│  Port: 27017     │     │
+│  │                  │         │                  │     │
+│  │  Python 3.11     │         │  MongoDB 7.0     │     │
+│  │  FastAPI         │         │                  │     │
+│  └────────┬─────────┘         └──────────────────┘     │
+│           │                                              │
+│           │ Volumes montés (données non copiées)        │
+│           ▼                                              │
+│  ┌──────────────────────────────────────────────┐      │
+│  │  ./data/features → /app/data/features        │      │
+│  │  ./data/indexes → /app/data/indexes          │      │
+│  │  ./data/mirflickr → /app/data/mirflickr      │      │
+│  └──────────────────────────────────────────────┘      │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Lancement avec Docker
+
+```bash
+# Construire et démarrer tous les services
+docker-compose up -d
+
+# Vérifier les logs
+docker-compose logs -f backend
+
+# Arrêter les services
+docker-compose down
+
+# Arrêter et supprimer les volumes
+docker-compose down -v
+```
+
+### Accès avec Docker
+
+| Service | URL |
+|---------|-----|
+| Backend API | http://localhost:8000 |
+| API Docs | http://localhost:8000/docs |
+| MongoDB | localhost:27017 |
+| Frontend | Ouvrir `frontend/index.html` manuellement |
+
+### Volumes Docker
+
+| Volume | Usage |
+|--------|-------|
+| `./data/features` | Descripteurs (lecture seule) |
+| `./data/indexes` | Index FAISS/VP-Tree (lecture seule) |
+| `./data/mirflickr` | Vignettes (lecture seule) |
+| `mongo-data` | Données MongoDB (persistant) |
+
+### Avantages de Docker
+
+- ✅ **Environnement reproductible** : Même configuration partout
+- ✅ **Installation simplifiée** : Une seule commande `docker-compose up`
+- ✅ **MongoDB inclus** : Pas d'installation manuelle
+- ✅ **Isolation** : Pas de conflit avec autres projets
+
+### Limitations Docker
+
+- ⚠️ **Premier démarrage lent** : Construction de l'image (~5 min)
+- ⚠️ **Mémoire requise** : 8 GB minimum pour les index
+- ⚠️ **Accès aux vignettes** : Montage de volumes requis
+
+### Dépannage Docker
+
+```bash
+# Si MongoDB ne démarre pas
+docker-compose restart mongo
+
+# Si le backend ne trouve pas les données
+docker-compose down
+docker-compose up -d
+
+# Vérifier l'espace disque
+docker system df
+
+# Nettoyer les images inutilisées
+docker system prune -a
+```
+
+---
+
+## 🛠 Développement
+
+### Exécuter les tests
+
+```bash
+cd backend
+pytest tests/
+```
+
+### Évaluation complète
+
+```bash
+cd backend
+python scripts/comprehensive_evaluation.py
+```
+
+Les résultats sont sauvegardés dans `backend/evaluation_results/`.
+
+---
+
+## 📝 Licence
+
+Ce projet utilise le dataset MIRFLICKR-1M sous licence Creative Commons.
+Voir `data/mirflickr/raw/license/` pour les licences individuelles des images.
+
+---
+
+## 👤 Auteur
+
+Projet académique - Système CBIR MIRFLICKR-1M
+
+---
+
+## 📚 Références
+
+- [MIRFLICKR-1M Dataset](https://press.liacs.nl/mirflickr/)
+- [MPEG-7 Descriptors](https://www.chiariglione.org/mpeg/standards/mpeg-7)
+- [FAISS Documentation](https://github.com/facebookresearch/faiss)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)

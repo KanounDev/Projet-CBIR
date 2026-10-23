@@ -1,0 +1,812 @@
+{
+  "descriptor_evaluation": [
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 6819.672724997508,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.5974025130271912,
+      "std_distance": 0.05712614580988884
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 5381.816494997474,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.6119641661643982,
+      "std_distance": 0.052677277475595474
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 5742.528760001005,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.6307623386383057,
+      "std_distance": 0.05034661293029785
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 2347.528814999532,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.3601530194282532,
+      "std_distance": 0.06299373507499695
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 272.58896499843104,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.3772750198841095,
+      "std_distance": 0.06127949804067612
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 212.34853499918245,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.4003959894180298,
+      "std_distance": 0.061831504106521606
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 1718.8161149984808,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.1800765097141266,
+      "std_distance": 0.03149687498807907
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 1762.6987149982597,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.18863748013973236,
+      "std_distance": 0.03063974902033806
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 1462.7921149985923,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.2001979649066925,
+      "std_distance": 0.0309157557785511
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 950.5493799995747,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.3601530194282532,
+      "std_distance": 0.06299373507499695
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 164.87460500211455,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.3772750198841095,
+      "std_distance": 0.061279501765966415
+    },
+    {
+      "query_id": -1,
+      "descriptor": "vgg16",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 163.98376000288408,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.4003959894180298,
+      "std_distance": 0.061831504106521606
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 847.5295550015289,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.558174192905426,
+      "std_distance": 0.09633604437112808
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 708.4190950001357,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.5738441348075867,
+      "std_distance": 0.09454266726970673
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 563.9061049980228,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.5960522890090942,
+      "std_distance": 0.09588435292243958
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 288.00331999882474,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.32083919644355774,
+      "std_distance": 0.1026383712887764
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 51.12772500142455,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.3382355272769928,
+      "std_distance": 0.10667940974235535
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 49.59342499932973,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.3644722104072571,
+      "std_distance": 0.11543254554271698
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 670.572964999883,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.027565760537981987,
+      "std_distance": 0.016387546434998512
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 640.071300001,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.029041990637779236,
+      "std_distance": 0.017245255410671234
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 652.8975549990719,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.031201109290122986,
+      "std_distance": 0.0184169989079237
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 257.9602350015193,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 2.862595558166504,
+      "std_distance": 2.1497631072998047
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 44.33723999973154,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 2.8685977458953857,
+      "std_distance": 2.148972749710083
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 45.2435900006094,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 2.877657413482666,
+      "std_distance": 2.1485908031463623
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "chi2",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 2024.3814400018891,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.6094175577163696,
+      "std_distance": 0.2051076591014862
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "chi2",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 2002.9804250021698,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.6402378082275391,
+      "std_distance": 0.2080361396074295
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "chi2",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 1988.9183050028805,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.6817978620529175,
+      "std_distance": 0.21660475432872772
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "chi2",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 190.53347499866504,
+      "precision_at_k": 100.0,
+      "recall_at_k": 20.405094561441313,
+      "mean_distance": 2.862595558166504,
+      "std_distance": 2.1497631072998047
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "chi2",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 52.00928999984171,
+      "precision_at_k": 100.0,
+      "recall_at_k": 21.412720989882747,
+      "mean_distance": 2.8685977458953857,
+      "std_distance": 2.148972988128662
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "chi2",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 52.652064998983406,
+      "precision_at_k": 100.0,
+      "recall_at_k": 20.157846791504422,
+      "mean_distance": 2.877657413482666,
+      "std_distance": 2.1485910415649414
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "l1",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 965.969330000371,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 4.940828323364258,
+      "std_distance": 0.9482308626174927
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "l1",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 646.3086450014089,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 5.085556507110596,
+      "std_distance": 0.9174646735191345
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "l1",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 448.57770500166225,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 5.282771110534668,
+      "std_distance": 0.9202624559402466
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "l1",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 355.6006350008829,
+      "precision_at_k": 25.0,
+      "recall_at_k": 3.5380116959064325,
+      "mean_distance": 13.064297676086426,
+      "std_distance": 5.98321008682251
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "l1",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 244.3654050002806,
+      "precision_at_k": 25.0,
+      "recall_at_k": 3.347841070164119,
+      "mean_distance": 13.014238357543945,
+      "std_distance": 5.97334098815918
+    },
+    {
+      "query_id": -1,
+      "descriptor": "edgehistogram",
+      "metric": "l1",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 248.09646000067005,
+      "precision_at_k": 25.0,
+      "recall_at_k": 3.1569565511753312,
+      "mean_distance": 13.013068199157715,
+      "std_distance": 5.95242166519165
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 114.79456000015489,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.11851862818002701,
+      "std_distance": 0.019627299159765244
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 99.55581500253174,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.12497884780168533,
+      "std_distance": 0.019260326400399208
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "euclidean",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 99.47025000074063,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.13391873240470886,
+      "std_distance": 0.02017754502594471
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 30.679730002884753,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.014432398602366447,
+      "std_distance": 0.004218469839543104
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 12.91659000198706,
+      "precision_at_k": 100.0,
+      "recall_at_k": 99.04761904761905,
+      "mean_distance": 0.015991391614079475,
+      "std_distance": 0.004695040639489889
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "euclidean",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 12.387810001382604,
+      "precision_at_k": 100.0,
+      "recall_at_k": 99.6078431372549,
+      "mean_distance": 0.018341921269893646,
+      "std_distance": 0.005552144255489111
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 127.60593500061077,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.00014010204176884145,
+      "std_distance": 5.1068636821582913e-05
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 124.86457000195514,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.00015408256149385124,
+      "std_distance": 5.64380970899947e-05
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "cosine",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 124.40485000042827,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.0001771973038557917,
+      "std_distance": 6.9356981839519e-05
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 35.42993500086595,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 31.999414443969727,
+      "std_distance": 3.274674654006958
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 11.88864000068861,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 31.999601364135742,
+      "std_distance": 3.274639844894409
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "cosine",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 13.392949999979464,
+      "precision_at_k": 100.0,
+      "recall_at_k": 99.6078431372549,
+      "mean_distance": 31.999900817871094,
+      "std_distance": 3.274557590484619
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "l1",
+      "index_type": "brute",
+      "k": 10,
+      "search_time_ms": 179.52876499984995,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.5685434937477112,
+      "std_distance": 0.09460479021072388
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "l1",
+      "index_type": "brute",
+      "k": 20,
+      "search_time_ms": 175.24606000151834,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.598825991153717,
+      "std_distance": 0.0914900079369545
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "l1",
+      "index_type": "brute",
+      "k": 50,
+      "search_time_ms": 174.39980500057572,
+      "precision_at_k": 100.0,
+      "recall_at_k": 100.0,
+      "mean_distance": 0.6395187973976135,
+      "std_distance": 0.09694887697696686
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "l1",
+      "index_type": "faiss",
+      "k": 10,
+      "search_time_ms": 129.0933349970146,
+      "precision_at_k": 0.0,
+      "recall_at_k": 0.0,
+      "mean_distance": 36.8775634765625,
+      "std_distance": 1.9453374147415161
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "l1",
+      "index_type": "faiss",
+      "k": 20,
+      "search_time_ms": 104.00831000079052,
+      "precision_at_k": 0.0,
+      "recall_at_k": 0.0,
+      "mean_distance": 36.8776741027832,
+      "std_distance": 1.9453374147415161
+    },
+    {
+      "query_id": -1,
+      "descriptor": "homogeneoustexture",
+      "metric": "l1",
+      "index_type": "faiss",
+      "k": 50,
+      "search_time_ms": 105.63677999889478,
+      "precision_at_k": 0.0,
+      "recall_at_k": 0.0,
+      "mean_distance": 36.877811431884766,
+      "std_distance": 1.9453372955322266
+    }
+  ],
+  "index_comparison": {
+    "vgg16": {
+      "brute_avg_time_ms": 1714.610400001402,
+      "faiss_avg_time_ms": 328.4182300019893,
+      "speedup": 5.220813716677714,
+      "consistency": 1.0
+    },
+    "edgehistogram": {
+      "brute_avg_time_ms": 392.96767999694566,
+      "faiss_avg_time_ms": 92.84519000066211,
+      "speedup": 4.232504451702272,
+      "consistency": 1.0
+    }
+  },
+  "fusion_evaluation": {
+    "fusion_vgg16_edgehistogram": {
+      "avg_time_ms": 1097.2520300012548,
+      "avg_distance": 0.9711592733860016,
+      "std_distance": 0.09469646944046411
+    },
+    "single_descriptors": {
+      "vgg16": {
+        "avg_time_ms": 817.5376900006086,
+        "avg_distance": 0.5728082060813904,
+        "std_distance": 0.14324097335338593
+      },
+      "edgehistogram": {
+        "avg_time_ms": 226.95033000345575,
+        "avg_distance": 0.533376932144165,
+        "std_distance": 0.15860283374786377
+      },
+      "homogeneoustexture": {
+        "avg_time_ms": 140.8902900002431,
+        "avg_distance": 0.11815948784351349,
+        "std_distance": 0.035175714641809464
+      }
+    }
+  },
+  "text_evaluation": {
+    "sunset_and": {
+      "keyword": "sunset",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 7.90440000128001
+    },
+    "sunset_or": {
+      "keyword": "sunset",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 4.088899993803352
+    },
+    "beach_and": {
+      "keyword": "beach",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 5.786000008811243
+    },
+    "beach_or": {
+      "keyword": "beach",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 3.470100011327304
+    },
+    "flower_and": {
+      "keyword": "flower",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 4.636899990146048
+    },
+    "flower_or": {
+      "keyword": "flower",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 1.9648999877972528
+    },
+    "car_and": {
+      "keyword": "car",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 7.344400000874884
+    },
+    "car_or": {
+      "keyword": "car",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 2.3040999949444085
+    },
+    "dog_and": {
+      "keyword": "dog",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 4.010699994978495
+    },
+    "dog_or": {
+      "keyword": "dog",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 1.5071999951032922
+    },
+    "cat_and": {
+      "keyword": "cat",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 8.507200007443316
+    },
+    "cat_or": {
+      "keyword": "cat",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 1.7607999907340854
+    },
+    "tree_and": {
+      "keyword": "tree",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 2.8695000073639676
+    },
+    "tree_or": {
+      "keyword": "tree",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 1.9675999938044697
+    },
+    "water_and": {
+      "keyword": "water",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 2.337500001885928
+    },
+    "water_or": {
+      "keyword": "water",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 3.3057999971788377
+    },
+    "sky_and": {
+      "keyword": "sky",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 1.8629999976838008
+    },
+    "sky_or": {
+      "keyword": "sky",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 1.5896999975666404
+    },
+    "city_and": {
+      "keyword": "city",
+      "mode": "and",
+      "result_count": 20,
+      "time_ms": 3.904500001226552
+    },
+    "city_or": {
+      "keyword": "city",
+      "mode": "or",
+      "result_count": 20,
+      "time_ms": 2.166100006434135
+    }
+  }
+}

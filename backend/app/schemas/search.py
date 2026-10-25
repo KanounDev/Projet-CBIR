@@ -6,8 +6,9 @@ Defines request and response models for:
 - /images: Browse/paginate images
 - /health: Health check
 """
-from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+import math
+from typing import Dict, List, Literal, Optional
+from pydantic import BaseModel, Field, model_validator
 
 
 # ============================================================================
@@ -28,7 +29,7 @@ class SearchRequest(BaseModel):
         description="List of keywords for text search",
         example=["sunset", "beach"]
     )
-    keyword_mode: str = Field(
+    keyword_mode: Literal["and", "or"] = Field(
         default="and",
         description="Keyword combination mode: 'and' (all must match) or 'or' (any match)"
     )
@@ -36,6 +37,8 @@ class SearchRequest(BaseModel):
     # Visual search
     query_image_id: Optional[int] = Field(
         default=None,
+        ge=0,
+        le=999999,
         description="Image ID to use as visual query (0-999999)",
         example=42
     )
@@ -54,7 +57,7 @@ class SearchRequest(BaseModel):
         description="Weight per descriptor for fusion (sum should be 1.0)",
         example={"vgg16": 1.0}
     )
-    index_type: str = Field(
+    index_type: Literal["faiss", "vptree", "brute"] = Field(
         default="faiss",
         description="Index type: faiss (production), vptree (demo), brute (reference)"
     )
@@ -70,6 +73,49 @@ class SearchRequest(BaseModel):
         default=True,
         description="Exclude query image from results"
     )
+
+    @model_validator(mode="after")
+    def validate_search_parameters(self):
+        if not self.keywords and self.query_image_id is None:
+            raise ValueError("Provide at least one keyword or a query_image_id")
+
+        supported_metrics = {
+            "vgg16": {"euclidean", "cosine"},
+            "edgehistogram": {"euclidean", "cosine", "chi2", "l1"},
+            "homogeneoustexture": {"euclidean", "cosine", "l1"},
+        }
+        if self.descriptors:
+            unknown = set(self.descriptors) - supported_metrics.keys()
+            if unknown:
+                raise ValueError(f"Unknown descriptor(s): {', '.join(sorted(unknown))}")
+            if len(set(self.descriptors)) != len(self.descriptors):
+                raise ValueError("Descriptors must not contain duplicates")
+            if any(not descriptor for descriptor in self.descriptors):
+                raise ValueError("Descriptors must not be empty strings")
+            for descriptor, metric in (self.metrics or {}).items():
+                if descriptor not in self.descriptors:
+                    raise ValueError(f"Metric provided for unselected descriptor: {descriptor}")
+                if metric not in supported_metrics[descriptor]:
+                    raise ValueError(
+                        f"Metric '{metric}' is not supported for {descriptor}"
+                    )
+            if len(self.descriptors) > 1 and self.index_type != "brute":
+                raise ValueError(
+                    "Multi-descriptor fusion uses exhaustive search; set index_type to 'brute'"
+                )
+        elif self.metrics:
+            raise ValueError("Metrics require at least one selected descriptor")
+
+        if self.weights:
+            if not self.descriptors or set(self.weights) - set(self.descriptors):
+                raise ValueError("Weights must correspond to selected descriptors")
+            if any(
+                not math.isfinite(weight) or weight <= 0
+                for weight in self.weights.values()
+            ):
+                raise ValueError("Descriptor weights must be finite and positive")
+
+        return self
 
 
 # ============================================================================

@@ -1,11 +1,11 @@
 """Comprehensive evaluation script for CBIR system.
 
 This script evaluates:
-1. Search quality (precision@k, recall@k)
-2. Performance comparison (FAISS vs Brute Force)
-3. Descriptor comparison (VGG16 vs MPEG-7)
-4. Multi-descriptor fusion effectiveness
-5. Index type comparison
+1. Self-retrieval sanity checks
+2. FAISS/brute-force top-k consistency and performance
+3. Descriptor distance statistics
+4. Multi-descriptor fusion timing
+5. Text search performance
 
 Outputs:
 - backend/evaluation_results.json - All metrics
@@ -54,8 +54,8 @@ class EvaluationResult:
     index_type: str
     k: int
     search_time_ms: float
-    precision_at_k: float
-    recall_at_k: float
+    self_retrieval_rate_pct: float
+    top_k_jaccard_pct: Optional[float]
     mean_distance: float
     std_distance: float
 
@@ -170,13 +170,14 @@ def evaluate_descriptor(
 
                 avg_time = np.mean(times)
                 self_retrieval_rate = np.mean(self_retrieval_scores) * 100
-                consistency_rate = np.mean(consistency_scores) * 100 if consistency_scores else 100.0
+                consistency_rate = np.mean(consistency_scores) * 100 if consistency_scores else None
 
                 # Compute distance statistics
                 mean_dist = np.mean(all_distances) if all_distances else 0.0
                 std_dist = np.std(all_distances) if all_distances else 0.0
 
-                print(f"    k={k}: time={avg_time:.2f}ms, self_retrieval={self_retrieval_rate:.1f}%, consistency={consistency_rate:.1f}%")
+                consistency_label = f"{consistency_rate:.1f}%" if consistency_rate is not None else "N/A"
+                print(f"    k={k}: time={avg_time:.2f}ms, self_retrieval={self_retrieval_rate:.1f}%, top-k Jaccard={consistency_label}")
 
                 results.append(EvaluationResult(
                     query_id=-1,  # Aggregated
@@ -185,8 +186,8 @@ def evaluate_descriptor(
                     index_type=index_type,
                     k=k,
                     search_time_ms=avg_time,
-                    precision_at_k=self_retrieval_rate,  # Using self-retrieval as proxy
-                    recall_at_k=consistency_rate,
+                    self_retrieval_rate_pct=self_retrieval_rate,
+                    top_k_jaccard_pct=consistency_rate,
                     mean_distance=mean_dist,
                     std_distance=std_dist
                 ))
@@ -334,7 +335,8 @@ def compare_index_types(manager, descriptor: str, query_ids: List[int], k: int =
 
             # Compute consistency
             if len(ids_brute) > 0:
-                consistency = len(set(ids_brute) & set(ids_faiss)) / k
+                union = set(ids_brute) | set(ids_faiss)
+                consistency = len(set(ids_brute) & set(ids_faiss)) / len(union) if union else 0.0
                 results["faiss"]["consistency"].append(consistency)
         except Exception:
             results["faiss"]["times"].append(float('inf'))
@@ -366,18 +368,23 @@ def generate_report(all_results: Dict) -> str:
     report.append("\n---\n")
 
     # 1. Self-Retrieval Tests
-    report.append("## 1. Self-Retrieval Tests")
-    report.append("\nTests whether a query image is retrieved as the first result (expected: 100%).\n")
+    report.append("## 1. Self-Retrieval Sanity Checks")
+    report.append(
+        "\nSelf-retrieval checks whether a query's own feature vector is returned first. "
+        "This is an implementation sanity check, not a measure of semantic relevance or precision. "
+        "Top-k Jaccard compares FAISS results with brute force and is not applicable to brute-force rows.\n"
+    )
 
     if "descriptor_evaluation" in all_results:
-        report.append("| Descriptor | Metric | Index | k | Self-Retrieval Rate | Consistency | Avg Time (ms) |")
-        report.append("|------------|--------|-------|---|---------------------|-------------|---------------|")
+        report.append("| Descriptor | Metric | Index | k | Self-Retrieval Rate | Top-k Jaccard vs brute force | Avg Time (ms) |")
+        report.append("|------------|--------|-------|---|---------------------|-----------------------------|---------------|")
 
         for r in all_results["descriptor_evaluation"]:
             if r.index_type in ["brute", "faiss"]:
+                jaccard = f"{r.top_k_jaccard_pct:.1f}%" if r.top_k_jaccard_pct is not None else "N/A"
                 report.append(
                     f"| {r.descriptor} | {r.metric} | {r.index_type} | {r.k} | "
-                    f"{r.precision_at_k:.1f}% | {r.recall_at_k:.1f}% | {r.search_time_ms:.2f} |"
+                    f"{r.self_retrieval_rate_pct:.1f}% | {jaccard} | {r.search_time_ms:.2f} |"
                 )
 
     # 2. Index Type Comparison
@@ -421,10 +428,10 @@ def generate_report(all_results: Dict) -> str:
     # 5. Recommendations
     report.append("\n## 5. Recommendations\n")
     report.append("Based on the evaluation results:\n")
-    report.append("1. **Best descriptor:** VGG16 (semantic similarity, fastest)")
-    report.append("2. **Best index:** FAISS (100x+ faster than brute force)")
-    report.append("3. **Best metric:** Euclidean (good for all descriptors)")
-    report.append("4. **Fusion:** Use VGG16 as primary, MPEG-7 as secondary")
+    report.append("1. **Descriptor quality:** This evaluation has no human relevance labels, so it cannot rank semantic quality.")
+    report.append("2. **Index choice:** Use FAISS for supported metrics; verify its top-k Jaccard against brute force for each descriptor and metric.")
+    report.append("3. **Metric choice:** Select a distance metric based on descriptor properties and task requirements.")
+    report.append("4. **Fusion:** Treat multi-descriptor fusion as experimental until evaluated with relevance judgments.")
 
     return "\n".join(report)
 

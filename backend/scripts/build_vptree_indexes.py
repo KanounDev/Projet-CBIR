@@ -82,6 +82,7 @@ def main():
 
     INDEXES_DIR.mkdir(parents=True, exist_ok=True)
 
+    failures = []
     for desc_name, config in DESCRIPTORS.items():
         print(f"\n{desc_name.upper()}:")
 
@@ -115,6 +116,7 @@ def main():
 
             except Exception as e:
                 print(f"  FAILED: {e}")
+                failures.append(f"{desc_name}/{metric}: {e}")
 
     print("\n" + "=" * 60)
     print("Done! VP-Tree files in:", INDEXES_DIR)
@@ -128,6 +130,8 @@ def main():
 
     print("\nNote: VP-Trees are built on a 50k subset for demonstration.")
     print("For full 1M search, use FAISS indexes instead.")
+    if failures:
+        raise RuntimeError("One or more VP-Tree indexes failed:\n  " + "\n  ".join(failures))
 
 
 if __name__ == "__main__":

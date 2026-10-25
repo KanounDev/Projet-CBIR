@@ -7,6 +7,7 @@ Creates:
     data/indexes/vgg16_euclidean.faiss
 """
 import sys
+import os
 from pathlib import Path
 
 # Add backend to path
@@ -17,7 +18,7 @@ import faiss
 
 # Paths
 ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = ROOT / "data"
+DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 FEATURES_PATH = DATA_DIR / "features" / "vgg16_gap512_1M.npy"
 INDEX_PATH = DATA_DIR / "indexes" / "vgg16_euclidean.faiss"
 
@@ -36,22 +37,14 @@ def build_vgg16_faiss_index():
 
     # Load features
     print(f"\n1. Loading VGG16 features from {FEATURES_PATH}...")
-    features = np.load(FEATURES_PATH)
+    features = np.load(FEATURES_PATH, mmap_mode="r")
     print(f"   Shape: {features.shape}")
     print(f"   Dtype: {features.dtype}")
-    print(f"   Size: {features.nbytes / (1024**3):.2f} GB")
-
-    # Ensure float32
-    if features.dtype != np.float32:
-        print("   Converting to float32...")
-        features = features.astype(np.float32)
+    if features.ndim != 2 or features.shape[1] != 512:
+        raise ValueError(f"Expected VGG16 feature shape (N, 512), got {features.shape}")
 
     # L2 normalize (important for cosine similarity via L2 distance)
-    print("\n2. L2 normalizing features...")
-    norms = np.linalg.norm(features, axis=1, keepdims=True)
-    norms[norms == 0] = 1  # Avoid division by zero
-    features = features / norms
-    print(f"   Done. Sample norm: {np.linalg.norm(features[0]):.6f}")
+    print("\n2. L2 normalizing and adding features in chunks...")
 
     # Build FAISS index
     print("\n3. Building FAISS index...")
@@ -63,8 +56,15 @@ def build_vgg16_faiss_index():
     index = faiss.IndexFlatL2(dim)
 
     # Add vectors
-    print("   Adding vectors to index...")
-    index.add(features)
+    chunk_size = 50_000
+    for start in range(0, n_vectors, chunk_size):
+        end = min(start + chunk_size, n_vectors)
+        chunk = np.asarray(features[start:end], dtype=np.float32).copy()
+        norms = np.linalg.norm(chunk, axis=1, keepdims=True)
+        norms[norms == 0] = 1
+        chunk /= norms
+        index.add(chunk)
+        print(f"   Added {end:,}/{n_vectors:,} vectors")
     print(f"   Index total vectors: {index.ntotal:,}")
 
     # Save index

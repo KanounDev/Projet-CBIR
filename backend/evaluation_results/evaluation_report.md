@@ -4,63 +4,63 @@
 
 ---
 
-## 1. Self-Retrieval Tests
+## 1. Self-Retrieval Sanity Checks
 
-Tests whether a query image is retrieved as the first result (expected: 100%).
+Self-retrieval checks whether a query's own feature vector is returned first. This is an implementation sanity check, not a measure of semantic relevance or precision. Top-k Jaccard compares FAISS results with brute force and is not applicable to brute-force rows.
 
-| Descriptor | Metric | Index | k | Self-Retrieval Rate | Consistency | Avg Time (ms) |
-|------------|--------|-------|---|---------------------|-------------|---------------|
-| vgg16 | euclidean | brute | 10 | 100.0% | 100.0% | 6819.67 |
-| vgg16 | euclidean | brute | 20 | 100.0% | 100.0% | 5381.82 |
-| vgg16 | euclidean | brute | 50 | 100.0% | 100.0% | 5742.53 |
+| Descriptor | Metric | Index | k | Self-Retrieval Rate | Top-k Jaccard vs brute force | Avg Time (ms) |
+|------------|--------|-------|---|---------------------|-----------------------------|---------------|
+| vgg16 | euclidean | brute | 10 | 100.0% | N/A | 6819.67 |
+| vgg16 | euclidean | brute | 20 | 100.0% | N/A | 5381.82 |
+| vgg16 | euclidean | brute | 50 | 100.0% | N/A | 5742.53 |
 | vgg16 | euclidean | faiss | 10 | 100.0% | 100.0% | 2347.53 |
 | vgg16 | euclidean | faiss | 20 | 100.0% | 100.0% | 272.59 |
 | vgg16 | euclidean | faiss | 50 | 100.0% | 100.0% | 212.35 |
-| vgg16 | cosine | brute | 10 | 100.0% | 100.0% | 1718.82 |
-| vgg16 | cosine | brute | 20 | 100.0% | 100.0% | 1762.70 |
-| vgg16 | cosine | brute | 50 | 100.0% | 100.0% | 1462.79 |
+| vgg16 | cosine | brute | 10 | 100.0% | N/A | 1718.82 |
+| vgg16 | cosine | brute | 20 | 100.0% | N/A | 1762.70 |
+| vgg16 | cosine | brute | 50 | 100.0% | N/A | 1462.79 |
 | vgg16 | cosine | faiss | 10 | 100.0% | 100.0% | 950.55 |
 | vgg16 | cosine | faiss | 20 | 100.0% | 100.0% | 164.87 |
 | vgg16 | cosine | faiss | 50 | 100.0% | 100.0% | 163.98 |
-| edgehistogram | euclidean | brute | 10 | 100.0% | 100.0% | 847.53 |
-| edgehistogram | euclidean | brute | 20 | 100.0% | 100.0% | 708.42 |
-| edgehistogram | euclidean | brute | 50 | 100.0% | 100.0% | 563.91 |
+| edgehistogram | euclidean | brute | 10 | 100.0% | N/A | 847.53 |
+| edgehistogram | euclidean | brute | 20 | 100.0% | N/A | 708.42 |
+| edgehistogram | euclidean | brute | 50 | 100.0% | N/A | 563.91 |
 | edgehistogram | euclidean | faiss | 10 | 100.0% | 100.0% | 288.00 |
 | edgehistogram | euclidean | faiss | 20 | 100.0% | 100.0% | 51.13 |
 | edgehistogram | euclidean | faiss | 50 | 100.0% | 100.0% | 49.59 |
-| edgehistogram | cosine | brute | 10 | 100.0% | 100.0% | 670.57 |
-| edgehistogram | cosine | brute | 20 | 100.0% | 100.0% | 640.07 |
-| edgehistogram | cosine | brute | 50 | 100.0% | 100.0% | 652.90 |
+| edgehistogram | cosine | brute | 10 | 100.0% | N/A | 670.57 |
+| edgehistogram | cosine | brute | 20 | 100.0% | N/A | 640.07 |
+| edgehistogram | cosine | brute | 50 | 100.0% | N/A | 652.90 |
 | edgehistogram | cosine | faiss | 10 | 100.0% | 100.0% | 257.96 |
 | edgehistogram | cosine | faiss | 20 | 100.0% | 100.0% | 44.34 |
 | edgehistogram | cosine | faiss | 50 | 100.0% | 100.0% | 45.24 |
-| edgehistogram | chi2 | brute | 10 | 100.0% | 100.0% | 2024.38 |
-| edgehistogram | chi2 | brute | 20 | 100.0% | 100.0% | 2002.98 |
-| edgehistogram | chi2 | brute | 50 | 100.0% | 100.0% | 1988.92 |
+| edgehistogram | chi2 | brute | 10 | 100.0% | N/A | 2024.38 |
+| edgehistogram | chi2 | brute | 20 | 100.0% | N/A | 2002.98 |
+| edgehistogram | chi2 | brute | 50 | 100.0% | N/A | 1988.92 |
 | edgehistogram | chi2 | faiss | 10 | 100.0% | 20.4% | 190.53 |
 | edgehistogram | chi2 | faiss | 20 | 100.0% | 21.4% | 52.01 |
 | edgehistogram | chi2 | faiss | 50 | 100.0% | 20.2% | 52.65 |
-| edgehistogram | l1 | brute | 10 | 100.0% | 100.0% | 965.97 |
-| edgehistogram | l1 | brute | 20 | 100.0% | 100.0% | 646.31 |
-| edgehistogram | l1 | brute | 50 | 100.0% | 100.0% | 448.58 |
+| edgehistogram | l1 | brute | 10 | 100.0% | N/A | 965.97 |
+| edgehistogram | l1 | brute | 20 | 100.0% | N/A | 646.31 |
+| edgehistogram | l1 | brute | 50 | 100.0% | N/A | 448.58 |
 | edgehistogram | l1 | faiss | 10 | 25.0% | 3.5% | 355.60 |
 | edgehistogram | l1 | faiss | 20 | 25.0% | 3.3% | 244.37 |
 | edgehistogram | l1 | faiss | 50 | 25.0% | 3.2% | 248.10 |
-| homogeneoustexture | euclidean | brute | 10 | 100.0% | 100.0% | 114.79 |
-| homogeneoustexture | euclidean | brute | 20 | 100.0% | 100.0% | 99.56 |
-| homogeneoustexture | euclidean | brute | 50 | 100.0% | 100.0% | 99.47 |
+| homogeneoustexture | euclidean | brute | 10 | 100.0% | N/A | 114.79 |
+| homogeneoustexture | euclidean | brute | 20 | 100.0% | N/A | 99.56 |
+| homogeneoustexture | euclidean | brute | 50 | 100.0% | N/A | 99.47 |
 | homogeneoustexture | euclidean | faiss | 10 | 100.0% | 100.0% | 30.68 |
 | homogeneoustexture | euclidean | faiss | 20 | 100.0% | 99.0% | 12.92 |
 | homogeneoustexture | euclidean | faiss | 50 | 100.0% | 99.6% | 12.39 |
-| homogeneoustexture | cosine | brute | 10 | 100.0% | 100.0% | 127.61 |
-| homogeneoustexture | cosine | brute | 20 | 100.0% | 100.0% | 124.86 |
-| homogeneoustexture | cosine | brute | 50 | 100.0% | 100.0% | 124.40 |
+| homogeneoustexture | cosine | brute | 10 | 100.0% | N/A | 127.61 |
+| homogeneoustexture | cosine | brute | 20 | 100.0% | N/A | 124.86 |
+| homogeneoustexture | cosine | brute | 50 | 100.0% | N/A | 124.40 |
 | homogeneoustexture | cosine | faiss | 10 | 100.0% | 100.0% | 35.43 |
 | homogeneoustexture | cosine | faiss | 20 | 100.0% | 100.0% | 11.89 |
 | homogeneoustexture | cosine | faiss | 50 | 100.0% | 99.6% | 13.39 |
-| homogeneoustexture | l1 | brute | 10 | 100.0% | 100.0% | 179.53 |
-| homogeneoustexture | l1 | brute | 20 | 100.0% | 100.0% | 175.25 |
-| homogeneoustexture | l1 | brute | 50 | 100.0% | 100.0% | 174.40 |
+| homogeneoustexture | l1 | brute | 10 | 100.0% | N/A | 179.53 |
+| homogeneoustexture | l1 | brute | 20 | 100.0% | N/A | 175.25 |
+| homogeneoustexture | l1 | brute | 50 | 100.0% | N/A | 174.40 |
 | homogeneoustexture | l1 | faiss | 10 | 0.0% | 0.0% | 129.09 |
 | homogeneoustexture | l1 | faiss | 20 | 0.0% | 0.0% | 104.01 |
 | homogeneoustexture | l1 | faiss | 50 | 0.0% | 0.0% | 105.64 |
@@ -122,7 +122,7 @@ Tests whether a query image is retrieved as the first result (expected: 100%).
 
 Based on the evaluation results:
 
-1. **Best descriptor:** VGG16 (semantic similarity, fastest)
-2. **Best index:** FAISS (100x+ faster than brute force)
-3. **Best metric:** Euclidean (good for all descriptors)
-4. **Fusion:** Use VGG16 as primary, MPEG-7 as secondary
+1. **Descriptor quality:** This evaluation has no human relevance labels, so it cannot rank semantic quality.
+2. **Index choice:** Use FAISS for supported metrics; verify its top-k Jaccard against brute force for each descriptor and metric.
+3. **Metric choice:** Select a distance metric based on descriptor properties and task requirements.
+4. **Fusion:** Treat multi-descriptor fusion as experimental until evaluated with relevance judgments.

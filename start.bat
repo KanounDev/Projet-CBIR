@@ -1,135 +1,117 @@
 @echo off
-REM ============================================================
-REM CBIR System - Deployment Script for Windows
-REM ============================================================
-REM
-REM This script starts the CBIR system:
-REM 1. Checks MongoDB connection
-REM 2. Starts the FastAPI backend
-REM 3. Opens the web interface
-REM
-REM Prerequisites:
-REM - Python 3.11+ installed
-REM - MongoDB installed and running
-REM - Virtual environment activated (optional)
-REM
-REM Usage:
-REM   Double-click start.bat or run from command line:
-REM   > start.bat
-REM
-REM ============================================================
+setlocal
+set "ROOT=%~dp0"
+set "DATA_DIR=%ROOT%data"
+set "MONGO_URI=mongodb://localhost:27017"
+set "MONGO_DB=cbir"
+set "TORCH_HOME=%DATA_DIR%\models\torch"
+set "PYTHON=%ROOT%venv\Scripts\python.exe"
 
+pushd "%ROOT%"
 echo.
 echo ============================================================
 echo CBIR System - MIRFLICKR-1M Image Search Engine
 echo ============================================================
 echo.
 
-REM Set environment variables
-set DATA_DIR=%~dp0data
-set MONGO_URI=mongodb://localhost:27017
-
-echo [1/4] Checking prerequisites...
-echo.
-
-REM Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python not found. Please install Python 3.11+
-    pause
-    exit /b 1
+    echo [ERROR] Install Python 3.11 or newer and add it to PATH.
+    goto :fail
 )
-echo   [OK] Python found
-
-REM Check MongoDB (try to connect)
-mongod --version >nul 2>&1
+python -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
 if errorlevel 1 (
-    echo   [WARN] MongoDB not found in PATH
-    echo   [WARN] Make sure MongoDB is installed and running
-) else (
-    echo   [OK] MongoDB found
+    echo [ERROR] Python 3.11 or newer is required.
+    goto :fail
 )
 
-REM Check data directory
-echo   Checking data directory: %DATA_DIR%
-if not exist "%DATA_DIR%" (
-    echo   [ERROR] Data directory not found: %DATA_DIR%
-    echo   [ERROR] Please create data folder or download from MIRFLICKR
-    echo.
-    pause
-    exit /b 1
-)
-if not exist "%DATA_DIR%\features" (
-    echo   [WARN] Features directory not found: %DATA_DIR%\features
-    echo   [WARN] You may need to run: python scripts/parse_descriptors.py
-    echo.
-    pause
-    REM Continue anyway - maybe just testing
-) else (
-    echo   [OK] Data directory found
-)
-
-echo.
-echo [2/4] Checking dependencies...
-echo.
-
-REM Check if in backend directory or need to cd
-if exist "backend\requirements.txt" (
-    cd backend
-) else if exist "requirements.txt" (
-    REM Already in backend directory
-) else (
-    echo   [ERROR] Cannot find requirements.txt
-    echo   [ERROR] Please run this script from the project root directory
-    pause
-    exit /b 1
-)
-
-REM Install dependencies if needed
-pip show fastapi >nul 2>&1
-if errorlevel 1 (
-    echo   Installing dependencies...
-    pip install -r requirements.txt
-    if errorlevel 1 (
-        echo   [ERROR] Failed to install dependencies
-        pause
-        exit /b 1
+for %%D in (thumbs1-33 thumbs34-66 thumbs67-100 tags license features_edgehistogram features_homogeneoustexture) do (
+    if not exist "%DATA_DIR%\mirflickr\raw\%%D\" (
+        echo [ERROR] Required raw data folder is missing:
+        echo         %DATA_DIR%\mirflickr\raw\%%D
+        echo Download and extract all MIRFLICKR archives as described in README.md.
+        goto :fail
     )
-) else (
-    echo   [OK] Dependencies already installed
 )
 
-echo.
-echo [3/4] Starting backend server...
-echo.
+if not exist "%PYTHON%" (
+    echo [1/5] Creating Python virtual environment...
+    python -m venv "%ROOT%venv"
+    if errorlevel 1 (
+        echo [ERROR] Could not create the virtual environment.
+        goto :fail
+    )
+)
 
-REM Start backend in background
-start "CBIR Backend" python main.py
+"%PYTHON%" -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] The project virtual environment is not using Python 3.11 or newer.
+    goto :fail
+)
 
-REM Wait for server to start
-echo   Waiting for server to start...
-timeout /t 5 /nobreak >nul
+echo [2/5] Checking Python dependencies...
+"%PYTHON%" -c "import fastapi, numpy, pymongo, faiss, torch, torchvision" >nul 2>&1
+if errorlevel 1 (
+    echo Installing dependencies. This may take several minutes on first run...
+    "%PYTHON%" -m pip install -r "%ROOT%backend\requirements.txt"
+    if errorlevel 1 (
+        echo [ERROR] Dependency installation failed.
+        goto :fail
+    )
+)
 
-echo.
-echo [4/4] Opening web interface...
-echo.
+echo [3/5] Checking MongoDB...
+"%PYTHON%" -c "from pymongo import MongoClient; MongoClient('mongodb://localhost:27017', serverSelectionTimeoutMS=2000).admin.command('ping')" >nul 2>&1
+if errorlevel 1 (
+    where mongod >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] MongoDB is not running and mongod was not found in PATH.
+        echo Install MongoDB Community Server or start your MongoDB service, then retry.
+        goto :fail
+    )
+    if not exist "%DATA_DIR%\mongo\" mkdir "%DATA_DIR%\mongo"
+    echo Starting a local MongoDB instance...
+    start "CBIR MongoDB" /min mongod --dbpath "%DATA_DIR%\mongo" --bind_ip 127.0.0.1 --port 27017
+    for /l %%I in (1,1,30) do (
+        "%PYTHON%" -c "from pymongo import MongoClient; MongoClient('mongodb://localhost:27017', serverSelectionTimeoutMS=1000).admin.command('ping')" >nul 2>&1
+        if not errorlevel 1 goto :mongo_ready
+        timeout /t 2 /nobreak >nul
+    )
+    echo [ERROR] MongoDB did not become available.
+    goto :fail
+)
 
-REM Open browser
-start http://localhost:8000
+:mongo_ready
+echo [4/5] Creating missing features, indexes, metadata, and MongoDB records...
+"%PYTHON%" "%ROOT%backend\scripts\prepare_data.py"
+if errorlevel 1 (
+    echo [ERROR] Data preparation failed. Review the error above.
+    goto :fail
+)
 
-echo.
-echo ============================================================
-echo CBIR System is running!
-echo ============================================================
-echo.
-echo   Backend API:  http://localhost:8000
-echo   API Docs:     http://localhost:8000/docs
-echo   Frontend:     Open frontend/index.html in your browser
-echo.
-echo   Press Ctrl+C in the backend window to stop the server
-echo.
-echo ============================================================
-echo.
+echo [5/5] Starting the backend...
+start "CBIR Backend" /D "%ROOT%backend" "%PYTHON%" -m uvicorn main:app --host 0.0.0.0 --port 8000
+for /l %%I in (1,1,30) do (
+    "%PYTHON%" -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=2)" >nul 2>&1
+    if not errorlevel 1 goto :backend_ready
+    timeout /t 2 /nobreak >nul
+)
+echo [ERROR] Backend did not become available at http://localhost:8000.
+goto :fail
 
-REM Keep the window open
+:backend_ready
+echo Opening the web interface...
+start "" "http://localhost:8000/"
+echo.
+echo CBIR is running: http://localhost:8000/
+echo API docs: http://localhost:8000/docs
+echo Close the CBIR Backend window to stop the API.
+echo.
+popd
 pause
+exit /b 0
+
+:fail
+popd
+pause
+exit /b 1

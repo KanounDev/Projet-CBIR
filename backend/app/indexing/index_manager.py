@@ -22,7 +22,6 @@ Index types:
 - brute: Brute-force reference search
 """
 import os
-import pickle
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -35,6 +34,7 @@ except ImportError:
     FAISS_AVAILABLE = False
 
 from app.indexing.distances import METRICS
+from app.indexing.vptree import VPTree
 
 # Configuration
 ROOT = Path(__file__).resolve().parents[3]
@@ -243,36 +243,52 @@ class IndexManager:
         query: np.ndarray,
         metric: str = "euclidean",
         k: int = 10,
+        exclude_id: Optional[int] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Search using VP-Tree index.
-
-        Note: VP-Tree is for demonstration on small subsets (≤100k).
-
-        Args:
-            descriptor: Descriptor name
-            query: Query vector (d,)
-            metric: Distance metric
-            k: Number of neighbors
-
-        Returns:
-            Tuple of (image_ids, distances)
-        """
-        # Load index (lazy)
+        """Search the saved VP-Tree, which covers only its indexed image subset."""
         key = (descriptor, metric)
         if key not in self._vptree_indexes:
             index_path = self.indexes_dir / f"{descriptor}_{metric}.vptree"
             if not index_path.exists():
                 raise FileNotFoundError(f"VP-Tree index not found: {index_path}")
 
-            with open(index_path, "rb") as f:
-                self._vptree_indexes[key] = pickle.load(f)
+            info = DESCRIPTOR_INFO.get(descriptor)
+            if info is None:
+                raise ValueError(f"Unknown descriptor: {descriptor}")
+
+            features_path = self.features_dir / info["file"]
+            normalized_path = self.features_dir / f"{descriptor}_normalized.npy"
+            if descriptor != "vgg16" and normalized_path.is_file():
+                features_path = normalized_path
+            if not features_path.is_file():
+                raise FileNotFoundError(f"Feature file not found: {features_path}")
+
+            features = np.load(features_path, mmap_mode="r")
+            vptree = VPTree.load(str(index_path), features)
+            if (
+                vptree.n < 1
+                or vptree.n > len(features)
+                or vptree.d != features.shape[1]
+            ):
+                raise ValueError(f"VP-Tree index does not match feature file: {index_path}")
+
+            self._vptree_indexes[key] = vptree
 
         vptree = self._vptree_indexes[key]
-
-        # VP-Tree expects different interface
-        # Assuming it has a query method returning (ids, distances)
-        # This needs to match the actual VP-Tree implementation
-        raise NotImplementedError("VP-Tree search not yet implemented. Use FAISS or brute-force.")
+        if descriptor != "vgg16" and (
+            self.features_dir / f"{descriptor}_normalized.npy"
+        ).is_file():
+            query = np.asarray(query, dtype=np.float32)
+            query_norm = np.linalg.norm(query)
+            if query_norm > 0:
+                query = query / query_norm
+        search_k = min(k + int(exclude_id is not None), vptree.n)
+        ids, distances = vptree.query(query, k=search_k)
+        if exclude_id is not None:
+            keep = ids != exclude_id
+            ids = ids[keep]
+            distances = distances[keep]
+        return ids[:k], distances[:k]
 
     def search(
         self,
@@ -301,7 +317,7 @@ class IndexManager:
         elif index_type == "faiss":
             return self.search_faiss(descriptor, query, metric, k, exclude_id)
         elif index_type == "vptree":
-            return self.search_vptree(descriptor, query, metric, k)
+            return self.search_vptree(descriptor, query, metric, k, exclude_id)
         else:
             raise ValueError(f"Unknown index type: {index_type}")
 

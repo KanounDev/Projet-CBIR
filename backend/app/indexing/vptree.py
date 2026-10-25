@@ -62,20 +62,25 @@ class VPTree:
     def _distances_from(self, vantage_idx: int, indices: np.ndarray) -> np.ndarray:
         """Compute distances from vantage point to all points in indices."""
         v = np.asarray(self.X[vantage_idx], dtype=np.float32)
+        return self._distances_to_vector(v, indices)
+
+    def _distances_to_vector(self, query: np.ndarray, indices: np.ndarray) -> np.ndarray:
+        """Compute distances from a query vector to a batch of indexed points."""
+        query = np.asarray(query, dtype=np.float32)
         # Vectorized distance computation
         points = np.asarray(self.X[indices], dtype=np.float32)
 
         if self.distance == 'euclidean':
-            diff = points - v
+            diff = points - query
             return np.sqrt(np.sum(diff * diff, axis=1))
         elif self.distance == 'l1':
-            return np.sum(np.abs(points - v), axis=1)
+            return np.sum(np.abs(points - query), axis=1)
         elif self.distance == 'cosine':
-            norms = np.linalg.norm(points, axis=1) * np.linalg.norm(v)
-            return 1.0 - (points @ v) / (norms + 1e-9)
+            norms = np.linalg.norm(points, axis=1) * np.linalg.norm(query)
+            return 1.0 - (points @ query) / (norms + 1e-9)
         elif self.distance == 'chi2':
-            diff = points - v
-            return 0.5 * np.sum(diff * diff / (points + v + 1e-9), axis=1)
+            diff = points - query
+            return 0.5 * np.sum(diff * diff / (points + query + 1e-9), axis=1)
         else:
             raise ValueError(f"Unknown distance: {self.distance}")
 
@@ -164,7 +169,7 @@ class VPTree:
         # Extract results from heap
         results = sorted([(-d, idx) for d, idx in heap])
         indices = np.array([idx for _, idx in results[:k]], dtype=np.int64)
-        distances = np.array([-d for d, _ in results[:k]], dtype=np.float32)
+        distances = np.array([d for d, _ in results[:k]], dtype=np.float32)
 
         return indices, distances
 
@@ -172,14 +177,22 @@ class VPTree:
                           heap: List, tau: float) -> float:
         """Recursive search with pruning."""
         if node.is_leaf:
-            # Brute force within leaf
-            for idx in node.indices:
-                d = self._dist_fn(np.asarray(self.X[idx], dtype=np.float32), q)
+            leaf_distances = self._distances_to_vector(q, node.indices)
+            candidate_count = min(k, len(node.indices))
+            candidate_positions = np.argpartition(
+                leaf_distances, candidate_count - 1
+            )[:candidate_count]
+            candidate_positions = candidate_positions[
+                np.argsort(leaf_distances[candidate_positions])
+            ]
+            for position in candidate_positions:
+                idx = int(node.indices[position])
+                d = float(leaf_distances[position])
                 if len(heap) < k:
-                    heapq.heappush(heap, (-d, int(idx)))
+                    heapq.heappush(heap, (-d, idx))
                     tau = -heap[0][0]
                 elif d < -heap[0][0]:
-                    heapq.heapreplace(heap, (-d, int(idx)))
+                    heapq.heapreplace(heap, (-d, idx))
                     tau = -heap[0][0]
             return tau
 

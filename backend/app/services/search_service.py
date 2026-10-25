@@ -256,39 +256,39 @@ class SearchService:
         if not request.weights:
             request.weights = {d: 1.0 for d in request.descriptors}
 
-        # For each descriptor, get distances to candidates
-        n_candidates = len(candidate_ids)
-        candidate_set = set(candidate_ids)
-
-        # Use first descriptor for simplicity (can extend to multi-descriptor)
-        desc = request.descriptors[0]
-        metric = request.metrics.get(desc, "euclidean")
-
-        query_vec = self.index_manager.get_feature_vector(desc, request.query_image_id)
-
-        # Brute-force over candidates only
-        X = self.index_manager.load_features(desc)
-
-        # Get distances for candidates
+        candidate_ids = np.asarray(candidate_ids, dtype=np.int64)
+        fused_distances = np.zeros(len(candidate_ids), dtype=np.float32)
+        valid = np.ones(len(candidate_ids), dtype=bool)
+        total_weight = sum(request.weights.values())
         from app.indexing.distances import METRICS
-        distance_fn = METRICS[metric]
 
-        # Compute distances only for candidate images
-        candidate_dists = []
-        for img_id in candidate_ids:
-            vec = np.asarray(X[img_id], dtype=np.float32)
-            dist = distance_fn(vec.reshape(1, -1), query_vec)[0]
-            candidate_dists.append((img_id, dist))
+        for desc in request.descriptors:
+            metric = request.metrics.get(desc, "euclidean")
+            weight = request.weights.get(desc, 1.0)
+            query_vec = self.index_manager.get_feature_vector(
+                desc, request.query_image_id
+            )
+            features = self.index_manager.load_features(desc)
+            distances = METRICS[metric](features[candidate_ids], query_vec)
+            fused_distances += (
+                (weight / total_weight)
+                * distances
+                / self.index_manager.get_scale(desc, metric)
+            )
 
-        # Sort by distance
-        candidate_dists.sort(key=lambda x: x[1])
+            valid_mask = self.index_manager.load_valid_mask(desc)
+            if valid_mask is not None:
+                valid &= valid_mask[candidate_ids]
 
-        # Take top-k
-        top_k = candidate_dists[:request.k]
+        if request.exclude_query and request.query_image_id is not None:
+            valid &= candidate_ids != request.query_image_id
+        candidate_ids = candidate_ids[valid]
+        fused_distances = fused_distances[valid]
+        order = np.argsort(fused_distances)[:request.k]
 
         # Get metadata
-        ids = [x[0] for x in top_k]
-        dists = [x[1] for x in top_k]
+        ids = candidate_ids[order].tolist()
+        dists = fused_distances[order]
         images = get_images_by_ids(ids)
 
         # Build results

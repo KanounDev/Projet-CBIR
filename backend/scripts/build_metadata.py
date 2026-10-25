@@ -86,6 +86,11 @@ def main():
     ids = sorted(set(lic) | set(tag) | set(thumbs))
     if args.limit:
         ids = ids[: args.limit]
+    elif ids != list(range(1_000_000)):
+        raise ValueError(
+            "Expected metadata IDs 0..999999 from the complete tags, license, "
+            "and thumbnail data. Check that all MIRFLICKR raw archives are extracted."
+        )
     print(f"license={len(lic)} tags={len(tag)} thumbs={len(thumbs)} -> {len(ids)} ids ({time.time() - t0:.0f}s)")
 
     def build(i):
@@ -100,8 +105,9 @@ def main():
 
     OUT.mkdir(parents=True, exist_ok=True)
     out_file = OUT / ("metadata_test.jsonl" if args.limit else "metadata.jsonl")
+    temporary_file = out_file.with_name(out_file.name + ".tmp")
     n_kw = n_url = n_thumb = 0
-    with open(out_file, "w", encoding="utf-8") as fh, ThreadPoolExecutor(args.threads) as pool:
+    with open(temporary_file, "w", encoding="utf-8") as fh, ThreadPoolExecutor(args.threads) as pool:
         for k, rec in enumerate(pool.map(build, ids, chunksize=256)):
             n_kw += bool(rec["keywords"])
             n_url += rec["photo_url"] is not None
@@ -109,6 +115,7 @@ def main():
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
             if k and k % 100000 == 0:
                 print(f"  {k}/{len(ids)} ({time.time() - t0:.0f}s)")
+    os.replace(temporary_file, out_file)
     n = len(ids)
     print(f"Saved {out_file} ({n} records, {time.time() - t0:.0f}s)")
     print(f"with keywords: {n_kw} ({100 * n_kw / n:.1f}%) | with photo_url: {n_url} ({100 * n_url / n:.1f}%) | with thumb: {n_thumb}")

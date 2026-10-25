@@ -3,6 +3,7 @@
 Base URL: `http://localhost:8000`
 
 Copy each command and paste into Postman's "Import > Raw text" or run directly in terminal.
+These examples are manual API smoke checks, not an automated regression suite. The browser UI is served at `http://localhost:8000/`.
 
 ---
 
@@ -196,7 +197,33 @@ curl -X POST "http://localhost:8000/api/search" \
 
 ---
 
-## 13. Multi-Descriptor Fusion (VGG16 + Edge Histogram)
+## 13. Visual Search - VP-Tree (50k Demonstration)
+
+Build the optional VP-Tree indexes first from the repository root:
+
+```bash
+python backend/scripts/build_vptree_indexes.py
+```
+
+Then query an image in the indexed range (IDs 0-49,999):
+
+```bash
+curl -X POST "http://localhost:8000/api/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_image_id": 42,
+    "descriptors": ["edgehistogram"],
+    "metrics": {"edgehistogram": "euclidean"},
+    "index_type": "vptree",
+    "k": 20
+  }'
+```
+
+VP-Tree searches only the indexed 50,000-image subset. Use FAISS for searches across all one million images. VP-Tree index files are not generated automatically during startup.
+
+---
+
+## 14. Multi-Descriptor Fusion (VGG16 + Edge Histogram)
 
 ```bash
 curl -X POST "http://localhost:8000/api/search" \
@@ -213,10 +240,11 @@ curl -X POST "http://localhost:8000/api/search" \
 ```
 
 **Expected:** Returns images similar by BOTH semantic (VGG16) and structural (Edge) features.
+Multi-descriptor fusion uses exhaustive distances, so use `"index_type": "brute"`; it does not use a FAISS or VP-Tree index.
 
 ---
 
-## 14. Combined Search (Text + Visual)
+## 15. Combined Search (Text + Visual)
 
 ```bash
 curl -X POST "http://localhost:8000/api/search" \
@@ -237,7 +265,7 @@ curl -X POST "http://localhost:8000/api/search" \
 
 ---
 
-## 15. Image Upload Search (External Query Image)
+## 16. Image Upload Search (External Query Image)
 
 ```bash
 # Windows PowerShell
@@ -263,7 +291,7 @@ curl -X POST "http://localhost:8000/api/search/upload" \
 
 ---
 
-## 16. Different Query Images
+## 17. Different Query Images
 
 Test with different image IDs (0-999999):
 
@@ -293,7 +321,7 @@ curl -X POST "http://localhost:8000/api/search" \
 
 ---
 
-## 17. Different Result Sizes (k values)
+## 18. Different Result Sizes (k values)
 
 ```bash
 # k=5 (few results)
@@ -332,17 +360,23 @@ curl -X POST "http://localhost:8000/api/search" \
 
 ---
 
-## 18. API Root Endpoint
+## 19. Web Client
+
+Open `http://localhost:8000/` to use the client. The root URL serves the web interface.
+
+---
+
+## 20. API Root Endpoint
 
 ```bash
 curl -X GET "http://localhost:8000/" -H "Accept: application/json"
 ```
 
-**Expected:** Returns API information and available endpoints.
+**Expected:** Returns the web client HTML page.
 
 ---
 
-## 19. OpenAPI Documentation
+## 21. OpenAPI Documentation
 
 ```bash
 # Swagger UI (interactive)
@@ -354,7 +388,7 @@ curl -X GET "http://localhost:8000/" -H "Accept: application/json"
 
 ---
 
-## 20. Error Cases
+## 22. Error Cases
 
 ### Invalid Image ID
 
@@ -368,7 +402,7 @@ curl -X POST "http://localhost:8000/api/search" \
   }'
 ```
 
-**Expected:** Returns 404 error (image not found).
+**Expected:** Returns HTTP 422 because image IDs must be in the range 0-999999.
 
 ### Invalid Descriptor
 
@@ -382,7 +416,7 @@ curl -X POST "http://localhost:8000/api/search" \
   }'
 ```
 
-**Expected:** Returns 400/500 error.
+**Expected:** Returns HTTP 422 with a validation message.
 
 ### Empty Keywords
 
@@ -395,11 +429,11 @@ curl -X POST "http://localhost:8000/api/search" \
   }'
 ```
 
-**Expected:** Returns error (no search parameters provided).
+**Expected:** Returns HTTP 422 because a search needs keywords or an image ID.
 
 ---
 
-## Testing Checklist for Report Screenshots
+## Manual Demonstration Checklist
 
 1. [ ] Health check showing "ok" status
 2. [ ] Descriptors list showing all 3 descriptors
@@ -411,8 +445,9 @@ curl -X POST "http://localhost:8000/api/search" \
 8. [ ] Visual search Homogeneous Texture results
 9. [ ] Multi-descriptor fusion results
 10. [ ] Combined search (text + visual) results
-11. [ ] Image upload search results
+11. [ ] VP-Tree search, after manually creating indexes (50k subset)
 12. [ ] Error case handling
+13. [ ] Optional VGG16 image upload search
 
 ---
 

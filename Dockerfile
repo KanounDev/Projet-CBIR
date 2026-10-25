@@ -27,6 +27,7 @@ COPY frontend/ ./frontend/
 # Set environment variables
 ENV MONGO_URI=mongodb://mongo:27017
 ENV DATA_DIR=/app/data
+ENV TORCH_HOME=/app/data/models/torch
 ENV PYTHONUNBUFFERED=1
 
 # Expose port
@@ -34,7 +35,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/api/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)" || exit 1
 
-# Run the application
-CMD ["python", "backend/main.py"]
+# Prepare missing data assets, then start the API without the development reloader.
+CMD ["sh", "-c", "python backend/scripts/prepare_data.py && cd backend && exec uvicorn main:app --host 0.0.0.0 --port 8000"]

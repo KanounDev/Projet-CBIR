@@ -58,31 +58,26 @@ async def health_check():
     indexes_available = []
 
     for desc in ["vgg16", "edgehistogram", "homogeneoustexture"]:
-        try:
-            # Check if feature file exists
-            info = {
-                "vgg16": ("vgg16_gap512_1M.npy", 512),
-                "edgehistogram": ("edgehistogram.npy", 150),
-                "homogeneoustexture": ("homogeneoustexture.npy", 43),
-            }
-            if desc in info:
-                fpath = manager.features_dir / info[desc][0]
-                if fpath.exists():
-                    features_loaded.append(desc)
+        info = {
+            "vgg16": "vgg16_gap512_1M.npy",
+            "edgehistogram": "edgehistogram.npy",
+            "homogeneoustexture": "homogeneoustexture.npy",
+        }
+        if (manager.features_dir / info[desc]).is_file():
+            features_loaded.append(desc)
 
-                # Check for FAISS index
-                for metric in ["euclidean", "cosine", "chi2"]:
-                    ipath = manager.indexes_dir / f"{desc}_{metric}.faiss"
-                    if ipath.exists():
-                        indexes_available.append(f"{desc}_{metric}.faiss")
-        except Exception:
-            pass
+    indexes_available = sorted(
+        path.name
+        for pattern in ("*.faiss", "*.vptree")
+        for path in manager.indexes_dir.glob(pattern)
+        if path.is_file()
+    )
 
     return HealthResponse(
         status="ok" if mongodb_status == "connected" else "degraded",
         mongodb=mongodb_status,
         features_loaded=features_loaded,
-        indexes_available=indexes_available[:10],  # Limit output
+        indexes_available=indexes_available[:20],
     )
 
 
@@ -97,31 +92,42 @@ async def list_descriptors():
     Returns:
         List of available descriptors with their properties
     """
+    manager = get_index_manager()
     descriptors = [
         DescriptorInfo(
             name="vgg16",
             dimension=512,
             description="VGG16 deep learning features (conv + GAP), best for semantic similarity",
             available_metrics=["euclidean", "cosine"],
-            available_indexes=["faiss", "brute"],
+            available_indexes=_available_indexes(manager, "vgg16"),
         ),
         DescriptorInfo(
             name="edgehistogram",
             dimension=150,
             description="MPEG-7 Edge Histogram, captures edge distribution",
             available_metrics=["euclidean", "chi2", "l1", "cosine"],
-            available_indexes=["faiss", "vptree", "brute"],
+            available_indexes=_available_indexes(manager, "edgehistogram"),
         ),
         DescriptorInfo(
             name="homogeneoustexture",
             dimension=43,
             description="MPEG-7 Homogeneous Texture, captures texture patterns",
             available_metrics=["euclidean", "cosine", "l1"],
-            available_indexes=["faiss", "vptree", "brute"],
+            available_indexes=_available_indexes(manager, "homogeneoustexture"),
         ),
     ]
 
     return descriptors
+
+
+def _available_indexes(manager, descriptor: str) -> List[str]:
+    """Report index implementations that have files available for this descriptor."""
+    available = ["brute"]
+    if any(manager.indexes_dir.glob(f"{descriptor}_*.faiss")):
+        available.append("faiss")
+    if any(manager.indexes_dir.glob(f"{descriptor}_*.vptree")):
+        available.append("vptree")
+    return available
 
 
 # ============================================================================
@@ -199,7 +205,7 @@ async def get_image(image_id: int):
 # ============================================================================
 
 @router.post("/search", response_model=SearchResponse, tags=["search"])
-async def search(request: SearchRequest):
+def search(request: SearchRequest):
     """Search images by keywords, visual similarity, or both.
 
     ## Search Modes:
@@ -239,6 +245,15 @@ async def search(request: SearchRequest):
         exclude_query=request.exclude_query,
     )
 
+    query_doc = None
+    if request.query_image_id is not None:
+        query_doc = get_image_by_id(request.query_image_id)
+        if query_doc is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Image {request.query_image_id} not found",
+            )
+
     # Execute search
     try:
         service = get_search_service()
@@ -275,20 +290,18 @@ async def search(request: SearchRequest):
 
     # Get query image info if visual search
     query_image = None
-    if request.query_image_id is not None:
-        doc = get_image_by_id(request.query_image_id)
-        if doc:
-            thumb_path = doc.get("thumb", "")
-            query_image = SearchResultItem(
-                id=doc["_id"],
-                distance=0.0,
-                thumb=thumb_path,
-                thumb_url=f"/static/thumbs/{thumb_path}" if thumb_path else "",
-                keywords=doc.get("keywords", []),
-                photo_url=doc.get("photo_url"),
-                web_url=doc.get("web_url"),
-                license=doc.get("license"),
-            )
+    if query_doc is not None:
+        thumb_path = query_doc.get("thumb", "")
+        query_image = SearchResultItem(
+            id=query_doc["_id"],
+            distance=0.0,
+            thumb=thumb_path,
+            thumb_url=f"/static/thumbs/{thumb_path}" if thumb_path else "",
+            keywords=query_doc.get("keywords", []),
+            photo_url=query_doc.get("photo_url"),
+            web_url=query_doc.get("web_url"),
+            license=query_doc.get("license"),
+        )
 
     return SearchResponse(
         query_image=query_image,

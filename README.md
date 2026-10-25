@@ -88,6 +88,8 @@ projet-CBIR/
 │   │   ├── build_metadata.py    # Tags + licences → metadata
 │   │   ├── load_mongo.py        # Chargement MongoDB
 │   │   └── comprehensive_evaluation.py  # Évaluation complète
+│   └── tests/
+│       └── test_search_contracts.py    # Tests unitaires du contrat et VP-Tree
 │   └── evaluation_results/
 │       ├── evaluation_results.json
 │       └── evaluation_report.md
@@ -117,8 +119,7 @@ projet-CBIR/
 │   │   └── ...
 │   ├── metadata/                # Métadonnées (générées par scripts)
 │   │   └── metadata.jsonl
-│   └── models/                  # Modèles pré-entraînés
-│       └── vgg16_features_imagenet.pth
+│   └── models/                  # Cache de poids VGG16 téléchargés
 │
 └── notebooks/
     └── exploration_donnees.ipynb
@@ -133,7 +134,7 @@ projet-CBIR/
 | Logiciel | Version | Usage |
 |----------|---------|-------|
 | **Python** | 3.11+ | Runtime principal |
-| **MongoDB** | 7.0+ | Base de données métadonnées |
+| **MongoDB** | Version installée localement ; Docker Compose utilise 7.0 | Base de données métadonnées |
 | **Git** | 2.0+ | Gestion de version |
 
 ### Bibliothèques Python principales
@@ -159,6 +160,8 @@ cd projet-CBIR
 ### 2. Télécharger les données MIRFLICKR-1M
 
 **Télécharger depuis** : https://press.liacs.nl/mirflickr/mirdownload.html
+
+Les données MIRFLICKR ne sont pas incluses dans le dépôt Git et ne sont pas téléchargées par les scripts de démarrage. Il faut télécharger et extraire les cinq archives ci-dessous avant d'utiliser `start.bat` ou Docker Compose. Les scripts créent ensuite les descripteurs, index, métadonnées et documents MongoDB dérivés.
 
 **Fichiers requis dans `data/mirflickr/raw/`** :
 
@@ -187,61 +190,14 @@ data/mirflickr/raw/
         └── <sous-dossiers>/<id>.txt
 ```
 
-### 3. Créer l'environnement Python
+### 3. Démarrer l'application
 
-```bash
-# Créer un environnement virtuel
-python -m venv venv
+Après avoir téléchargé et extrait les archives dans `data/mirflickr/raw/`, choisissez **une** méthode :
 
-# Activer l'environnement
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
+- **Windows sans Docker** : double-cliquez sur `start.bat`. Il crée un environnement virtuel, installe les dépendances manquantes et démarre MongoDB localement si nécessaire (MongoDB Community Server doit être installé et `mongod` disponible dans `PATH`).
+- **Docker** : suivez la section « Déploiement avec Docker » ci-dessous. MongoDB est fourni par Compose.
 
-# Installer les dépendances
-cd backend
-pip install -r requirements.txt
-```
-
-### 4. Installer et configurer MongoDB
-
-```bash
-# Windows: Télécharger depuis https://www.mongodb.com/try/download/community
-# Linux: sudo apt-get install mongodb
-# Mac: brew install mongodb-community
-
-# Démarrer MongoDB
-mongod --dbpath /path/to/data/db
-
-# Ou utiliser le service Windows
-net start MongoDB
-```
-
-### 5. Préparer les données (exécution unique)
-
-Les scripts suivants génèrent les fichiers nécessaires à partir des données brutes :
-
-```bash
-cd backend
-
-# Étape 1: Parser les descripteurs MPEG-7 → fichiers .npy
-python scripts/parse_descriptors.py
-
-# Étape 2: Construire les métadonnées (tags + licences)
-python scripts/build_metadata.py
-
-# Étape 3: Charger les métadonnées dans MongoDB
-python scripts/load_mongo.py
-
-# Étape 4: Construire les index FAISS et VP-Tree
-python scripts/build_indexes.py
-
-# Étape 5: Construire l'index VGG16 (si features existent)
-python scripts/build_vgg16_index.py
-```
-
-**Note**: Les descripteurs VGG16 (`vgg16_gap512_1M.npy`) sont déjà fournis dans `data/features/`. Si vous devez les régénérer, utilisez le script d'extraction VGG16.
+Au premier démarrage, l'application génère les descripteurs, les index FAISS et les métadonnées manquants, puis charge MongoDB. Le calcul VGG16 et la construction des index peuvent prendre longtemps. Une connexion Internet est nécessaire une première fois pour télécharger les poids ImageNet de VGG16 dans le cache `data/models/torch/`.
 
 ---
 
@@ -255,33 +211,27 @@ Double-cliquez sur **`start.bat`** ou exécutez :
 start.bat
 ```
 
-Ce script :
-1. Vérifie les prérequis (Python, MongoDB, données)
-2. Installe les dépendances si nécessaire
-3. Démarre le serveur FastAPI
-4. Ouvre l'interface web dans le navigateur
+Ce script prépare les données dérivées manquantes avant de lancer le backend et ouvre l'interface web. Les archives MIRFLICKR doivent déjà être extraites dans `data/mirflickr/raw/`.
 
-### Lancement manuel
+Pour lancer manuellement depuis la racine du dépôt, activez votre environnement virtuel, démarrez MongoDB, puis exécutez :
 
 ```bash
-# Terminal 1: Démarrer MongoDB (si pas déjà en cours)
-mongod --dbpath ./data/mongo
-
-# Terminal 2: Démarrer le backend
+python backend/scripts/prepare_data.py
 cd backend
-python main.py
-
-# Navigateur: Ouvrir l'interface
-# Ouvrir frontend/index.html manuellement dans le navigateur
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
+
+La préparation réutilise les fichiers générés déjà présents et n'importe les métadonnées que si `cbir.images` est vide.
 
 ### Accès à l'application
 
 | URL | Description |
 |-----|-------------|
-| `frontend/index.html` | Interface web (ouvrir manuellement) |
+| `http://localhost:8000/` | Interface web servie par FastAPI |
 | `http://localhost:8000/docs` | Documentation API (Swagger) |
 | `http://localhost:8000/api/health` | Vérification santé serveur |
+
+L'interface et l'API sont servies par le même serveur. Les résultats visuels peuvent être relancés en cliquant sur une vignette.
 
 ---
 
@@ -299,17 +249,18 @@ Ces données doivent être téléchargées depuis https://press.liacs.nl/mirflic
 | `data/mirflickr/raw/features_edgehistogram/` | Edge Histogram MPEG-7 | ~600 MB |
 | `data/mirflickr/raw/features_homogeneoustexture/` | Homogeneous Texture MPEG-7 | ~200 MB |
 
-### Données générées par les scripts
+### Données générées automatiquement au démarrage
 
-Ces données sont créées automatiquement par les scripts Python :
+Ces fichiers sont dérivés des archives dans `data/mirflickr/raw/`. `start.bat` et l'image Docker exécutent `backend/scripts/prepare_data.py` et ne recréent pas les éléments déjà présents.
 
 | Dossier/Fichier | Script de génération | Taille |
 |-----------------|----------------------|--------|
-| `data/features/*.npy` | `parse_descriptors.py` | ~3 GB |
-| `data/indexes/*.faiss` | `build_indexes.py` | ~4 GB |
-| `data/indexes/*.vptree` | `build_vptree_indexes.py` | ~5 MB |
+| `data/features/edgehistogram.npy`, `edgehistogram_ids.npy`, `homogeneoustexture.npy`, `homogeneoustexture_ids.npy` | `parse_descriptors.py` | ~1 GB |
+| `data/features/vgg16_gap512_1M.npy` | `build_vgg16_features.py` (extraction depuis les vignettes) | ~2 GB |
+| `data/indexes/*_euclidean.faiss` | `build_indexes.py`, `build_vgg16_index.py` | ~3 GB |
 | `data/metadata/metadata.jsonl` | `build_metadata.py` | ~200 MB |
-| MongoDB (images collection) | `load_mongo.py` | ~500 MB |
+| MongoDB (`cbir.images`) | `load_mongo.py` | ~500 MB |
+| `data/models/torch/` (poids VGG16 téléchargés) | torchvision au premier calcul VGG16 | ~500 MB |
 
 ### Règle d'identifiants
 
@@ -319,7 +270,7 @@ Ces données sont créées automatiquement par les scripts Python :
 ID = numéro_image - 1
 ```
 
-Exemple : `im42.jpg` ↔ ID `41`
+Exemple : `im43.jpg` ↔ ID `42`
 
 ---
 
@@ -331,7 +282,7 @@ Exemple : `im42.jpg` ↔ ID `41`
 | `/api/descriptors` | GET | Liste des descripteurs disponibles |
 | `/api/images` | GET | Parcourir les images (pagination) |
 | `/api/search` | POST | Recherche textuelle et/ou visuelle |
-| `/api/upload` | POST | Upload d'une image requête externe |
+| `/api/search/upload` | POST | Recherche avec une image requête externe (VGG16) |
 
 ### Exemple de requête de recherche
 
@@ -359,13 +310,14 @@ curl -X POST "http://localhost:8000/api/search" \
 | **edgehistogram** | 150 | MPEG-7 | Patterns de contours |
 | **homogeneoustexture** | 43 | MPEG-7 | Textures |
 
-### Comparaison des performances
+### Index de recherche
 
-| Descripteur | Temps moyen (FAISS) | Consistance vs Brute-force |
-|-------------|---------------------|----------------------------|
-| vgg16 | ~165 ms | 100% ✅ |
-| edgehistogram | ~50 ms | 100% ✅ |
-| homogeneoustexture | ~12 ms | 100% ✅ |
+- **FAISS Flat** est l'index principal et recherche sur la base complète.
+- **VP-Tree** est une démonstration limitée aux 50 000 premières images. Sa construction n'est pas lancée automatiquement, car elle peut prendre longtemps. Pour le créer manuellement après la préparation des données, exécutez `python backend/scripts/build_vptree_indexes.py` depuis la racine du dépôt. Une fois les fichiers `.vptree` présents, l'option apparaît dans l'interface et dans `/api/descriptors`.
+- **Recherche exhaustive** est une référence et peut être lente sur un million d'images.
+- La fusion de plusieurs descripteurs calcule les distances de façon exhaustive. En recherche combinée texte + image, les mots-clés filtrent les candidats, puis les descripteurs les classent.
+
+Les temps varient selon la machine et les paramètres de recherche. Les chiffres mesurés et leur protocole sont consignés dans le rapport d'évaluation ci-dessous ; ils ne constituent pas une garantie de latence.
 
 ---
 
@@ -388,13 +340,14 @@ curl -X POST "http://localhost:8000/api/search" \
 
 | Descripteur | Brute Force | FAISS | Speedup |
 |-------------|-------------|-------|---------|
-| vgg16 | 1714 ms | 328 ms | **5.2x** |
-| edgehistogram | 393 ms | 93 ms | **4.2x** |
-| homogeneoustexture | 140 ms | 18 ms | **7.8x** |
+| vgg16 | 1714.61 ms | 328.42 ms | **5.2x** |
+| edgehistogram | 392.97 ms | 92.85 ms | **4.2x** |
 
-### Taux de self-retrieval
+Ces valeurs proviennent de `backend/evaluation_results/evaluation_report.md`. Le rapport ne fournit pas de comparaison agrégée brute-force/FAISS équivalente pour Homogeneous Texture.
 
-Tous les descripteurs avec métriques euclidean/cosine obtiennent **100% de self-retrieval** (l'image requête est toujours trouvée en première position).
+### Vérifications self-retrieval
+
+Le taux de self-retrieval indique seulement si le vecteur de l'image requête revient en première position. C'est un contrôle de cohérence, **pas** une mesure de pertinence sémantique, de précision ou de qualité de recherche. Le rapport compare également les résultats FAISS au brute-force avec le Jaccard des ensembles top-k ; les résultats varient selon le descripteur et la métrique. L'évaluation ne comporte pas de jugements de pertinence humaine.
 
 ### Recherche textuelle
 
@@ -416,12 +369,12 @@ Tous les descripteurs avec métriques euclidean/cosine obtiennent **100% de self
 ### Index
 
 - **VP-Tree** : Limité à 50,000 images (démonstration uniquement)
-- **FAISS avec chi2/L1** : Inconsistant (utiliser brute-force)
+- **FAISS avec chi2/L1** : Les résultats peuvent différer du brute-force ; comparer le Jaccard top-k et utiliser brute-force lorsque la fidélité est requise.
 
 ### Performances
 
 - **Premier démarrage lent** : Chargement des index en mémoire (~30 secondes)
-- **Recherche brute-force** : 1-3 secondes pour 1M d'images
+- **Recherche brute-force** : Les temps dépendent du descripteur, du matériel et de la charge ; la comparaison présente dans le rapport est limitée à un petit ensemble de requêtes.
 
 ---
 
@@ -460,59 +413,63 @@ Tous les descripteurs avec métriques euclidean/cosine obtiennent **100% de self
 ### Lancement avec Docker
 
 ```bash
-# Construire et démarrer tous les services
-docker-compose up -d
+# Construire l'image et démarrer les services
+docker compose up --build -d
 
-# Vérifier les logs
-docker-compose logs -f backend
+# Suivre la préparation des données et le démarrage
+docker compose logs -f backend
 
 # Arrêter les services
-docker-compose down
+docker compose down
 
 # Arrêter et supprimer les volumes
-docker-compose down -v
+docker compose down -v
 ```
+
+Le backend attend que MongoDB soit prêt, puis prépare automatiquement les fichiers absents et importe les métadonnées si la collection `cbir.images` est vide. Les fichiers générés sont écrits dans les dossiers `data/features/`, `data/indexes/`, `data/metadata/` et `data/models/` sur l'hôte ; les données brutes sont montées en lecture seule. Le premier démarrage peut prendre des heures pour extraire les caractéristiques VGG16 des 1 million de vignettes. Une connexion Internet est nécessaire pour télécharger les poids ImageNet de VGG16 si le cache est vide.
 
 ### Accès avec Docker
 
 | Service | URL |
 |---------|-----|
-| Backend API | http://localhost:8000 |
+| Interface web et backend API | http://localhost:8000/ |
 | API Docs | http://localhost:8000/docs |
 | MongoDB | localhost:27017 |
-| Frontend | Ouvrir `frontend/index.html` manuellement |
 
 ### Volumes Docker
 
 | Volume | Usage |
 |--------|-------|
-| `./data/features` | Descripteurs (lecture seule) |
-| `./data/indexes` | Index FAISS/VP-Tree (lecture seule) |
-| `./data/mirflickr` | Vignettes (lecture seule) |
+| `./data/features` | Descripteurs calculés (persistants, écriture backend) |
+| `./data/indexes` | Index FAISS (persistants, écriture backend) |
+| `./data/metadata` | Métadonnées générées (persistantes, écriture backend) |
+| `./data/mirflickr` | Archives et fichiers bruts (montés en lecture seule) |
+| `./data/models` | Cache des poids VGG16 (persistant) |
 | `mongo-data` | Données MongoDB (persistant) |
 
 ### Avantages de Docker
 
 - ✅ **Environnement reproductible** : Même configuration partout
-- ✅ **Installation simplifiée** : Une seule commande `docker-compose up`
+- ✅ **Installation simplifiée** : Une seule commande `docker compose up --build`
 - ✅ **MongoDB inclus** : Pas d'installation manuelle
 - ✅ **Isolation** : Pas de conflit avec autres projets
 
 ### Limitations Docker
 
-- ⚠️ **Premier démarrage lent** : Construction de l'image (~5 min)
-- ⚠️ **Mémoire requise** : 8 GB minimum pour les index
+- ⚠️ **Premier démarrage lent** : Calcul de 1 million de vecteurs VGG16 et construction des index
+- ⚠️ **Espace disque** : Plusieurs gigaoctets sont nécessaires en plus des archives MIRFLICKR
+- ⚠️ **Mémoire requise** : Prévoir au moins 8 GB de RAM pour les index et le backend
 - ⚠️ **Accès aux vignettes** : Montage de volumes requis
 
 ### Dépannage Docker
 
 ```bash
 # Si MongoDB ne démarre pas
-docker-compose restart mongo
+docker compose restart mongo
 
 # Si le backend ne trouve pas les données
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up --build -d
 
 # Vérifier l'espace disque
 docker system df
@@ -525,12 +482,16 @@ docker system prune -a
 
 ## 🛠 Développement
 
-### Exécuter les tests
+### Tests automatisés
+
+Les tests unitaires sont indépendants des données MIRFLICKR et de MongoDB :
 
 ```bash
 cd backend
-pytest tests/
+python -m unittest discover -s tests
 ```
+
+Après le démarrage, vérifier aussi `http://localhost:8000/api/health` et tester une recherche depuis l'interface ou la documentation interactive sur `http://localhost:8000/docs`.
 
 ### Évaluation complète
 

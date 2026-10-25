@@ -16,16 +16,18 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router as api_router
 from app.api.upload import router as upload_router
-from app.db.mongodb import check_connection, get_stats
+from app.db.mongodb import check_connection, get_collection
 from app.indexing.index_manager import get_index_manager
 
 # Configuration
 DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parent.parent / "data"))
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
 
 
@@ -45,10 +47,9 @@ async def lifespan(app: FastAPI):
     print("\n1. Checking MongoDB connection...")
     try:
         check_connection()
-        stats = get_stats()
+        total_images = get_collection().estimated_document_count()
         print(f"   [OK] Connected to MongoDB")
-        print(f"   - Total images: {stats['total_images']}")
-        print(f"   - Images with keywords: {stats['images_with_keywords']}")
+        print(f"   - Approximately {total_images} images")
     except Exception as e:
         print(f"   [WARN] MongoDB connection failed: {e}")
         print("   Search will work but metadata may be unavailable")
@@ -136,26 +137,32 @@ if thumbs_dir.exists():
 else:
     print(f"Warning: Thumbnail directory not found at {thumbs_dir}")
 
+# Serve the browser client from the same origin as the API.
+if FRONTEND_DIR.is_dir():
+    app.mount(
+        "/frontend-assets",
+        StaticFiles(directory=str(FRONTEND_DIR)),
+        name="frontend-assets",
+    )
+
 # Include API routes
 app.include_router(api_router, prefix="/api")
 app.include_router(upload_router, prefix="/api")
 
 
 # Root endpoint
-@app.get("/", tags=["root"])
+@app.get("/", include_in_schema=False)
 async def root():
-    """Root endpoint with API information."""
-    return {
-        "name": "CBIR Search Engine",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "endpoints": {
+    """Serve the web client."""
+    index_file = FRONTEND_DIR / "index.html"
+    if not index_file.is_file():
+        return {
+            "name": "CBIR Search Engine",
+            "version": "1.0.0",
+            "docs": "/docs",
             "health": "/api/health",
-            "descriptors": "/api/descriptors",
-            "images": "/api/images",
-            "search": "/api/search",
-        },
-    }
+        }
+    return FileResponse(index_file)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
 
 // ----- Configuration -----
 // URL de base du serveur FastAPI : à adapter si le port ou la machine change.
-const API_BASE = 'http://localhost:8000';
+const API_BASE = window.location.origin;
 const MAX_KEYWORDS_SHOWN = 4;   // nombre de mots-clés affichés par image
 const GALLERY_PAGE_SIZE = 40;   // images par page dans la galerie
 
@@ -119,6 +119,7 @@ function updateMetricOptions() {
   const descriptors = selectedDescriptors();
   const metricSelect = els.metric;
   const metricHint = $('metric-hint');
+  const indexHint = $('index-hint');
 
   // Métriques supportées par descripteur (depuis backend)
   const supportedMetrics = {
@@ -128,12 +129,6 @@ function updateMetricOptions() {
   };
 
   // Index supportés par descripteur
-  const supportedIndexes = {
-    vgg16: ['faiss', 'brute'],
-    edgehistogram: ['faiss', 'vptree', 'brute'],
-    homogeneoustexture: ['faiss', 'vptree', 'brute']
-  };
-
   // Trouver l'intersection des métriques supportées
   let allowedMetrics = ['euclidean', 'cosine', 'chi2', 'l1'];
   let allowedIndexes = ['faiss', 'vptree', 'brute'];
@@ -145,9 +140,13 @@ function updateMetricOptions() {
     }, allowedMetrics);
 
     allowedIndexes = descriptors.reduce((acc, d) => {
-      const indexes = supportedIndexes[d] || [];
+      const descriptorInfo = availableDescriptors.find((item) => item.name === d);
+      const indexes = descriptorInfo?.available_indexes || ['faiss', 'brute'];
       return acc.filter(i => indexes.includes(i));
     }, allowedIndexes);
+  }
+  if (descriptors.length > 1) {
+    allowedIndexes = ['brute'];
   }
 
   // Mettre à jour les options de métrique
@@ -182,7 +181,7 @@ function updateMetricOptions() {
 
   const indexLabels = {
     faiss: 'FAISS',
-    vptree: 'VPTree',
+    vptree: 'VP-Tree (démo 50k)',
     brute: 'Exhaustif (brute)'
   };
 
@@ -198,6 +197,11 @@ function updateMetricOptions() {
   } else if (allowedIndexes.length > 0) {
     indexSelect.value = allowedIndexes[0];
   }
+  indexHint.textContent = descriptors.length > 1
+    ? 'La fusion de plusieurs descripteurs utilise une recherche exhaustive ; elle peut être lente sur 1 million d’images.'
+    : indexSelect.value === 'vptree'
+    ? 'VP-Tree : recherche limitée au sous-ensemble indexé (50 000 premières images). Pour toute la base, choisissez FAISS.'
+    : 'FAISS recherche sur la base complète. En mode combiné texte + image, les résultats sont recalculés sur les images filtrées par mots-clés.';
 
   // Afficher un hint si upload avec descripteur non supporté
   if (uploadedDataUrl && descriptors.length > 0) {
@@ -624,7 +628,7 @@ async function checkServer() {
   try {
     const descriptors = toList(await api('/api/descriptors'));
     const names = descriptors.map((d) => (typeof d === 'string' ? d : d.name));
-    availableDescriptors = descriptors;
+    availableDescriptors = descriptors.filter((d) => typeof d === 'object');
 
     if (names.length) {
       document.querySelectorAll('input[name="descriptor"]').forEach((c) => {

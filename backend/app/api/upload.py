@@ -13,6 +13,7 @@ import numpy as np
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from PIL import Image
+from starlette.concurrency import run_in_threadpool
 
 from app.schemas.search import SearchResponse, SearchResultItem
 from app.services.search_service import get_search_service, SearchRequest as InternalSearchRequest
@@ -314,7 +315,9 @@ async def search_by_uploaded_image(
 
     # Extract features
     try:
-        features = extract_features_from_image(image, desc_list)
+        features = await run_in_threadpool(
+            extract_features_from_image, image, desc_list
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Feature extraction failed: {e}")
 
@@ -323,7 +326,8 @@ async def search_by_uploaded_image(
         manager = get_index_manager()
         query_vec = features[desc]
 
-        ids, dists = manager.search(
+        ids, dists = await run_in_threadpool(
+            manager.search,
             descriptor=desc,
             query=query_vec,
             metric=metric,
@@ -338,7 +342,9 @@ async def search_by_uploaded_image(
 
         # Get metadata (MongoDB does NOT return documents in the order of the ids)
         from app.db.mongodb import get_images_by_ids
-        images = get_images_by_ids(list(dist_dict.keys()))
+        images = await run_in_threadpool(
+            get_images_by_ids, list(dist_dict.keys())
+        )
 
         results_list = []
         for img in images:

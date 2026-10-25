@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Backend API
   backend:
@@ -9,14 +7,16 @@ services:
       - "8000:8000"
     environment:
       - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB=cbir
       - DATA_DIR=/app/data
+      - TORCH_HOME=/app/data/models/torch
     volumes:
-      # Mount data directories (NOT copied into image)
-      - ./data/features:/app/data/features:ro
-      - ./data/indexes:/app/data/indexes:ro
-      - ./data/metadata:/app/data/metadata:ro
+      # Raw MIRFLICKR files are input-only; generated assets must be writable.
+      - ./data/features:/app/data/features
+      - ./data/indexes:/app/data/indexes
+      - ./data/metadata:/app/data/metadata
       - ./data/mirflickr:/app/data/mirflickr:ro
-      - ./data/models:/app/data/models:ro
+      - ./data/models:/app/data/models
     depends_on:
       mongo:
         condition: service_healthy

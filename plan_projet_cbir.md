@@ -5,6 +5,8 @@
 > **Version mise à jour** : adaptée aux données réellement téléchargées (`data/mirflickr/raw`) et à la diapo d'évaluation (démo déployée sur PC LIASA).
 >
 > **Révision de cohérence** : alignée sur les 5 diapos du sujet (Application, Fonctionnalités, Architecture, Évaluation, Outils). Voir la section « Correspondance avec les diapos du sujet » dans la section 1.
+>
+> **Précision de périmètre confirmée par l'enseignant** : la base Objects n'est pas requise pour ce projet. Le périmètre retenu est MIRFLICKR-1M ; les références à Objects ci-dessous sont des éléments initiaux du sujet et ne sont pas des livrables attendus.
 
 ---
 
@@ -20,7 +22,7 @@
    - **Licences** (`license`) : fichier texte clé/valeur (date de dépôt, licence, URL de la licence Creative Commons, titre, nom/pseudo/identifiant du propriétaire). **Selon les fichiers, il contient aussi `Photo id`, `Photo url` (image Flickr) et `Web url` (page Flickr de la photo) ; ces trois lignes sont absentes de certains fichiers** (voir « Constats sur les données réelles » ci-dessous).
    - **Vignettes uniquement** (`thumbs1-33`, `thumbs34-66`, `thumbs67-100`) : pas d'images en pleine taille en local (l'exemple `im1.jpg` fait 64×64 px). L'affichage repose sur les vignettes ; l'image complète s'ouvre via l'URL Flickr quand elle existe dans le fichier `license` (pas pour toutes les images, et certains liens Flickr peuvent être morts).
 
-> **Note** : La base « Objects » mentionnée dans le sujet n'est pas disponible. Le projet se concentre exclusivement sur MIRFLICKR-1M.
+> **Note** : La base « Objects » mentionnée dans le sujet n'est pas requise selon la confirmation de l'enseignant. Le projet se concentre exclusivement sur MIRFLICKR-1M.
 
 **Architecture de stockage (standard industriel)** :
 
@@ -54,10 +56,10 @@
 | Langage serveur | Python 3.11+ | – |
 | Framework API | **FastAPI** + Uvicorn | Flask, Django |
 | Calcul numérique | **NumPy**, **SciPy** | – |
-| Descripteurs image (Objects, et couleur sur vignettes MIRFLICKR si souhaité) | **scikit-image** (LBP, HOG), **OpenCV** (histogrammes couleur) | Pillow pour le chargement |
+| Descripteurs image complémentaires (facultatifs, non requis par le périmètre retenu) | scikit-image (LBP, HOG), OpenCV (histogrammes couleur) | Pillow pour le chargement |
 | Descripteurs MIRFLICKR | **Edge Histogram** + **Homogeneous Texture** (fournis, à parser) | – |
 | **Descripteurs deep learning (MIRFLICKR)** | **VGG16** (conv features + Global Average Pooling → **512 dims**, L2-normalisés) | ResNet, EfficientNet |
-| Index de similarité | **FAISS** (production, 1M+ vectors) + **VP-Tree** (démonstration, ≤100k vectors) | `scikit-learn NearestNeighbors`, `scipy.spatial.cKDTree` |
+| Index de similarité | **FAISS** (production, 1M+ vectors) + **VP-Tree** (démonstration, sous-ensemble de 50k) | `scikit-learn NearestNeighbors`, `scipy.spatial.cKDTree` |
 | Base de données | **MongoDB** (métadonnées : chemins images, URLs Flickr, tags, licences) | Elasticsearch (lourd) |
 | Accès MongoDB depuis Python | **pymongo** | motor (version asynchrone) |
 | Recherche texte (mots-clés) | **Index texte MongoDB** (`$text`) ou index sur le champ liste de mots-clés (ET/OU) | Elasticsearch si besoin de plus de souplesse (pluriels, lemmes) |
@@ -84,7 +86,7 @@ Bibliothèques ajoutées par ce plan et absentes de la diapo « Outils » (justi
 
 **Décision à prendre tôt** : jeu de travail sur MIRFLICKR. Le choix actuel est d'utiliser **le MIRFLICKR-1M complet** en local. Garder un sous-ensemble de 10 000 à 50 000 images pour développer vite, tester chaque module et, si besoin, pour un déploiement en ligne limité en mémoire.
 
-**Ordre de grandeur mémoire (à vérifier sur les vrais fichiers)** : 1 M de vecteurs de 150 dimensions (Edge Histogram) en float32 ≈ 600 Mo ; 43 dimensions (Homogeneous Texture) ≈ 172 Mo. Le VP-Tree sur 1 M de vecteurs est lourd à construire en Python pur : prévoir de le démontrer sur un sous-ensemble et d'utiliser FAISS / `NearestNeighbors` sur la base complète.
+**Ordre de grandeur mémoire (à vérifier sur les vrais fichiers)** : 1 M de vecteurs de 150 dimensions (Edge Histogram) en float32 ≈ 600 Mo ; 43 dimensions (Homogeneous Texture) ≈ 172 Mo. Le VP-Tree sur 1 M de vecteurs est lourd à construire en Python pur : le démontrer sur un sous-ensemble de 50 000 images ; utiliser FAISS sur la base complète.
 
 ### Constats sur les données réelles (échantillons examinés à l'étape 2)
 
@@ -146,7 +148,7 @@ Bibliothèques ajoutées par ce plan et absentes de la diapo « Outils » (justi
 
 ### 2.2 Deux phases bien séparées
 
-1. **Phase hors ligne (une seule fois)** : parsing des répertoires, tags et licences ; lecture des descripteurs MPEG-7 (MIRFLICKR) et calcul des descripteurs (Objects) ; construction des index ; remplissage de la base de données.
+1. **Phase hors ligne (une seule fois)** : parsing des répertoires, tags et licences ; lecture des descripteurs MPEG-7 (MIRFLICKR) et extraction des descripteurs VGG16 ; construction des index ; remplissage de la base de données.
 2. **Phase en ligne (à chaque requête)** : réception de la requête, calcul du descripteur de l'image requête si nécessaire, recherche dans l'index, fusion avec le texte, renvoi des résultats.
 
 ### 2.3 Arborescence du projet
@@ -296,8 +298,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
   1. Créer le dépôt Git et l'arborescence ci-dessus.
   2. Créer l'environnement (Anaconda ou venv) et installer les dépendances de base.
   3. Vérifier que `data/mirflickr/raw` est complet (descripteurs, tags, licences, les 3 archives de vignettes).
-  4. Télécharger la base Objects.
-- **Outils / sources** : Anaconda, Git, Jupyter, MIRFLICKR (https://press.liacs.nl/mirflickr/ : l'URL du sujet contient une faute, `.ntml` au lieu de `.html`), pages de la base Objects fournies par le professeur.
+- **Outils / sources** : Anaconda, Git, Jupyter, MIRFLICKR (https://press.liacs.nl/mirflickr/ : l'URL du sujet contient une faute, `.ntml` au lieu de `.html`).
 - **Contexte à donner à Claude** : le cahier des charges (captures), l'arborescence, les choix techniques de la section 1, ton niveau et ton système d'exploitation.
 - **Livrable** : projet qui s'installe et s'exécute, fichier `requirements.txt`, README de départ.
 - **Validation** : l'environnement se recrée depuis zéro avec une seule commande.
@@ -310,8 +311,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
   2. Examiner les deux descripteurs MPEG-7 fournis (Edge Histogram, Homogeneous Texture) : dimension, format du fichier, plages de valeurs.
   3. Ouvrir quelques fichiers `tags` et `license` : format, présence (ou non) d'une URL Flickr, de la licence, et des tags.
   4. **Vérifier le mapping** : confirmer la règle id = numéro d'image − 1 sur plusieurs images, entre vignettes, tags, licences et descripteurs.
-  5. Examiner la base Objects : nombre d'images, classes, taille, format, annotations disponibles.
-  6. Décider du sous-ensemble de développement (la base complète reste le but).
+  5. Décider du sous-ensemble de développement (la base complète reste le but).
 - **Outils / sources** : Jupyter, Pandas, Pillow, documentation MPEG-7 (savvash.blogspot.com, cbir.info), documentation de MIRFLICKR.
 - **Contexte à donner à Claude** : les **premières lignes d'un fichier de descripteurs**, d'un fichier de tags et d'un fichier de licence, la **liste des dossiers** et la documentation du format.
 - **Livrable** : notebook d'exploration et note courte « données » (structure, formats, volumes, règle de mapping).
@@ -321,9 +321,9 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 
 - **Objectif** : un jeu propre et indexé par identifiants.
 - **Actions** :
-  1. Attribuer un identifiant numérique unique à chaque image (MIRFLICKR : id = numéro − 1 ; Objects : liste ordonnée).
+  1. Attribuer un identifiant numérique unique à chaque image MIRFLICKR (id = numéro − 1).
   2. Construire le sous-ensemble de développement (échantillonnage aléatoire reproductible).
-  3. **MIRFLICKR** : conserver les vignettes telles quelles (ne pas les agrandir). **Objects** : générer des miniatures (par exemple 256 px) pour accélérer l'affichage.
+  3. Conserver les vignettes MIRFLICKR telles quelles (ne pas les agrandir).
   4. Produire le fichier de métadonnées (identifiant, base, chemin vignette, URL source, licence, mots-clés).
 - **Outils** : Python, Pillow, Pandas.
 - **Contexte à donner à Claude** : résultats de l'étape 2 et le modèle de données (section 2.5).
@@ -398,7 +398,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
   4. Implémenter le **service de recherche unifié** (`services/search_service.py`) qui permet à l'utilisateur de choisir :
      - **Descripteur(s)** : `vgg16`, `edgehistogram`, `homogeneoustexture` (un ou plusieurs, avec pondération)
      - **Distance** par descripteur : `euclidean`, `cosine`, `chi2`, `manhattan` (L1)
-     - **Index** : `faiss` (production, 1M+ images) ou `vptree` (démonstration, ≤100k) ou `brute` (référence)
+     - **Index** : `faiss` (production, 1M+ images) ou `vptree` (démonstration, 50k images) ou `brute` (référence)
      - **Fusion** des descripteurs : normalisation des distances puis somme pondérée
   5. Implémenter la **fusion texte + visuel** : filtrer par mots-clés puis trier par similarité visuelle, ou recherche visuelle seule.
   6. Créer un **manager d'index** (`indexing/index_manager.py`) qui charge les index FAISS/VP-Tree appropriés selon le descripteur et la distance choisis.
@@ -453,7 +453,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 - **Objectif** : vérifier la qualité et la rapidité, et avoir des chiffres pour le rapport.
 - **Actions** :
   1. Tests unitaires de base (descripteurs, distances, fusion, API) avec `pytest`.
-  2. Évaluation de la pertinence : précision@k sur des requêtes de la base Objects (en utilisant les classes comme vérité terrain).
+  2. Évaluer la pertinence des résultats visuels sur des requêtes MIRFLICKR avec un protocole documenté et des exemples inspectés ; ne pas présenter le self-retrieval comme une mesure de pertinence sémantique.
   3. Comparaison des descripteurs et de leurs combinaisons (sur MIRFLICKR : Edge Histogram, Homogeneous Texture, et leur combinaison).
   4. Mesure des temps de réponse.
 - **Outils** : pytest, NumPy, Matplotlib.

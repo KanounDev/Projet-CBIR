@@ -1,13 +1,17 @@
 """Step 4b - load data/metadata/metadata.jsonl into MongoDB (database cbir, collection images).
 
-Usage (from C:\\projet-CBIR, environment active, MongoDB running):
-    python backend/scripts/04b_load_mongo.py --test     # loads metadata_test.jsonl (1000 images)
-    python backend/scripts/04b_load_mongo.py            # loads the full metadata.jsonl
+Usage with Docker Compose (loads into the MongoDB used by the API):
+    docker-compose exec -T backend python backend/scripts/load_mongo.py
 
-The collection is emptied before each load, so the script can be re-run safely.
+Usage with a local backend/MongoDB:
+    python backend/scripts/load_mongo.py --test     # loads metadata_test.jsonl (1000 images)
+    python backend/scripts/load_mongo.py            # loads the full metadata.jsonl
+
+By default the collection is replaced. Use --if-empty for idempotent startup.
 """
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -21,14 +25,31 @@ BATCH = 10000
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true", help="use metadata_test.jsonl")
-    ap.add_argument("--uri", default="mongodb://localhost:27017")
-    ap.add_argument("--db", default="cbir")
+    ap.add_argument(
+        "--if-empty",
+        action="store_true",
+        help="skip loading when the images collection already contains documents",
+    )
+    ap.add_argument("--expected-count", type=int, default=None)
+    ap.add_argument("--uri", default=os.environ.get("MONGO_URI", "mongodb://localhost:27017"))
+    ap.add_argument("--db", default=os.environ.get("MONGO_DB", "cbir"))
     args = ap.parse_args()
 
     src = META / ("metadata_test.jsonl" if args.test else "metadata.jsonl")
+    if not src.is_file():
+        raise FileNotFoundError(f"Metadata file not found: {src}")
     client = MongoClient(args.uri, serverSelectionTimeoutMS=5000)
     client.admin.command("ping")  # fails fast if MongoDB is not running
     col = client[args.db]["images"]
+    existing_count = col.estimated_document_count()
+    if args.if_empty and existing_count:
+        if args.expected_count is not None and existing_count != args.expected_count:
+            raise RuntimeError(
+                f"{args.db}.images contains {existing_count} documents; "
+                f"expected {args.expected_count}. Run without --if-empty to reload it."
+            )
+        print(f"Skipping import; {args.db}.images already contains {existing_count} documents.")
+        return
     col.drop()
 
     t0, n, batch = time.time(), 0, []

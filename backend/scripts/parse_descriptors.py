@@ -22,6 +22,7 @@ RAW = ROOT / "data" / "mirflickr" / "raw"
 OUT = ROOT / "data" / "features"
 DIMS = {"edgehistogram": 150, "homogeneoustexture": 43}
 NAME_RE = re.compile(r"^(\d+)\.txt$")  # ignores .DS_Store and feature_names.txt
+EXPECTED_COUNT = 1_000_000
 
 
 def list_files(folder: Path):
@@ -55,9 +56,15 @@ def main():
     if args.limit:
         ids = ids[: args.limit]
     n = len(ids)
+    if not ids:
+        raise FileNotFoundError(f"No numbered descriptor files found in {folder}")
     print(f"{n} numbered .txt files, ids {ids[0]}..{ids[-1]}")
-    if args.limit is None and ids != list(range(n)):
-        print("WARNING: ids are not exactly 0..N-1, check for missing files")
+    if args.limit is None and ids != list(range(EXPECTED_COUNT)):
+        raise ValueError(
+            f"Expected descriptor IDs 0..{EXPECTED_COUNT - 1}; "
+            f"found {n} IDs from {ids[0]} to {ids[-1]}. "
+            "Check that the complete MIRFLICKR descriptor archive is extracted."
+        )
 
     mat = np.zeros((n, dim), dtype=np.float32)
     bad = []

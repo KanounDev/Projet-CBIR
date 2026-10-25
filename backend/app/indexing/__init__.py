@@ -1,7 +1,7 @@
 """Indexing module for CBIR.
 
 Provides fast nearest neighbor search using:
-- VP-Tree: for demonstration on moderate datasets (up to 100k)
+- VP-Tree: Euclidean demonstration on a 50k-image subset
 - FAISS: for production on large datasets (1M+)
 - Brute-force fallback: for correctness verification
 """

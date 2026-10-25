@@ -121,36 +121,52 @@ function updateMetricOptions() {
   const metricHint = $('metric-hint');
   const indexHint = $('index-hint');
 
-  // Métriques supportées par descripteur (depuis backend)
-  const supportedMetrics = {
+  const fallbackMetrics = {
     vgg16: ['euclidean', 'cosine'],
     edgehistogram: ['euclidean', 'chi2', 'l1', 'cosine'],
     homogeneoustexture: ['euclidean', 'cosine', 'l1']
   };
+  const descriptorInfo = (name) => availableDescriptors.find((item) => item.name === name);
+  const supportedMetrics = (name) => descriptorInfo(name)?.available_metrics || fallbackMetrics[name] || [];
+  let allowedMetrics = descriptors.length
+    ? supportedMetrics(descriptors[0]).filter((metric) =>
+      descriptors.every((name) => supportedMetrics(name).includes(metric)))
+    : ['euclidean', 'cosine', 'chi2', 'l1'];
+  let candidateIndexes = descriptors.length
+    ? descriptors.reduce((indexes, name) => {
+      const available = descriptorInfo(name)?.available_indexes || ['faiss', 'brute'];
+      return indexes.filter((index) => available.includes(index));
+    }, ['faiss', 'vptree', 'brute'])
+    : ['faiss', 'vptree', 'brute'];
+  if (descriptors.length > 1) candidateIndexes = ['brute'];
 
-  // Index supportés par descripteur
-  // Trouver l'intersection des métriques supportées
-  let allowedMetrics = ['euclidean', 'cosine', 'chi2', 'l1'];
-  let allowedIndexes = ['faiss', 'vptree', 'brute'];
+  const metricsForIndex = (index) => allowedMetrics.filter((metric) =>
+    descriptors.every((name) => {
+      const info = descriptorInfo(name);
+      const byIndex = info?.available_metrics_by_index?.[index];
+      if (byIndex) return byIndex.includes(metric);
+      if (index === 'faiss') return metric !== 'chi2';
+      return supportedMetrics(name).includes(metric);
+    }));
 
-  if (descriptors.length > 0) {
-    allowedMetrics = descriptors.reduce((acc, d) => {
-      const metrics = supportedMetrics[d] || [];
-      return acc.filter(m => metrics.includes(m));
-    }, allowedMetrics);
-
-    allowedIndexes = descriptors.reduce((acc, d) => {
-      const descriptorInfo = availableDescriptors.find((item) => item.name === d);
-      const indexes = descriptorInfo?.available_indexes || ['faiss', 'brute'];
-      return acc.filter(i => indexes.includes(i));
-    }, allowedIndexes);
-  }
-  if (descriptors.length > 1) {
-    allowedIndexes = ['brute'];
-  }
-
-  // Mettre à jour les options de métrique
   const currentMetric = metricSelect.value;
+  const currentIndex = els.indexType.value;
+  let selectedIndex = candidateIndexes.find((index) =>
+    index === currentIndex && metricsForIndex(index).includes(currentMetric));
+  if (!selectedIndex) {
+    selectedIndex = candidateIndexes.find((index) =>
+      metricsForIndex(index).length > 0) || candidateIndexes[0];
+  }
+  allowedMetrics = selectedIndex ? metricsForIndex(selectedIndex) : [];
+  let selectedMetric = allowedMetrics.includes(currentMetric) ? currentMetric : allowedMetrics[0];
+  let allowedIndexes = candidateIndexes.filter((index) =>
+    metricsForIndex(index).includes(selectedMetric));
+  if (!allowedIndexes.includes(selectedIndex)) selectedIndex = allowedIndexes[0];
+  if (selectedIndex && !allowedMetrics.includes(selectedMetric)) {
+    allowedMetrics = metricsForIndex(selectedIndex);
+    selectedMetric = allowedMetrics[0];
+  }
+
   metricSelect.innerHTML = '';
 
   const metricLabels = {
@@ -167,16 +183,10 @@ function updateMetricOptions() {
     metricSelect.appendChild(opt);
   });
 
-  // Restaurer la sélection si possible, sinon prendre la première
-  if (allowedMetrics.includes(currentMetric)) {
-    metricSelect.value = currentMetric;
-  } else if (allowedMetrics.length > 0) {
-    metricSelect.value = allowedMetrics[0];
-  }
+  if (selectedMetric) metricSelect.value = selectedMetric;
 
   // Mettre à jour les options d'index
   const indexSelect = els.indexType;
-  const currentIndex = indexSelect.value;
   indexSelect.innerHTML = '';
 
   const indexLabels = {
@@ -192,11 +202,7 @@ function updateMetricOptions() {
     indexSelect.appendChild(opt);
   });
 
-  if (allowedIndexes.includes(currentIndex)) {
-    indexSelect.value = currentIndex;
-  } else if (allowedIndexes.length > 0) {
-    indexSelect.value = allowedIndexes[0];
-  }
+  if (selectedIndex) indexSelect.value = selectedIndex;
   indexHint.textContent = descriptors.length > 1
     ? 'La fusion de plusieurs descripteurs utilise une recherche exhaustive ; elle peut être lente sur 1 million d’images.'
     : indexSelect.value === 'vptree'
@@ -681,6 +687,8 @@ els.clearUpload.addEventListener('click', clearUpload);
 document.querySelectorAll('input[name="descriptor"]').forEach(cb => {
   cb.addEventListener('change', updateMetricOptions);
 });
+els.indexType.addEventListener('change', updateMetricOptions);
+els.metric.addEventListener('change', updateMetricOptions);
 
 els.gallery.addEventListener('toggle', () => { if (els.gallery.open && !galleryLoaded) loadGallery(); });
 els.galleryPrev.addEventListener('click', () => { if (galleryPage > 1) { galleryPage--; loadGallery(); } });

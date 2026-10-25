@@ -10,6 +10,8 @@ import math
 from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, model_validator
 
+from app.indexing.metrics import FAISS_METRICS, SUPPORTED_METRICS
+
 
 # ============================================================================
 # Search Request
@@ -79,13 +81,8 @@ class SearchRequest(BaseModel):
         if not self.keywords and self.query_image_id is None:
             raise ValueError("Provide at least one keyword or a query_image_id")
 
-        supported_metrics = {
-            "vgg16": {"euclidean", "cosine"},
-            "edgehistogram": {"euclidean", "cosine", "chi2", "l1"},
-            "homogeneoustexture": {"euclidean", "cosine", "l1"},
-        }
         if self.descriptors:
-            unknown = set(self.descriptors) - supported_metrics.keys()
+            unknown = set(self.descriptors) - SUPPORTED_METRICS.keys()
             if unknown:
                 raise ValueError(f"Unknown descriptor(s): {', '.join(sorted(unknown))}")
             if len(set(self.descriptors)) != len(self.descriptors):
@@ -95,10 +92,18 @@ class SearchRequest(BaseModel):
             for descriptor, metric in (self.metrics or {}).items():
                 if descriptor not in self.descriptors:
                     raise ValueError(f"Metric provided for unselected descriptor: {descriptor}")
-                if metric not in supported_metrics[descriptor]:
+                if metric not in SUPPORTED_METRICS[descriptor]:
                     raise ValueError(
                         f"Metric '{metric}' is not supported for {descriptor}"
                     )
+            if self.index_type == "faiss" and not self.keywords:
+                for descriptor in self.descriptors:
+                    metric = (self.metrics or {}).get(descriptor, "euclidean")
+                    if metric not in FAISS_METRICS[descriptor]:
+                        raise ValueError(
+                            f"FAISS does not support '{metric}' for {descriptor}; "
+                            "use brute-force for this metric"
+                        )
             if len(self.descriptors) > 1 and self.index_type != "brute":
                 raise ValueError(
                     "Multi-descriptor fusion uses exhaustive search; set index_type to 'brute'"
@@ -159,6 +164,9 @@ class DescriptorInfo(BaseModel):
     description: str = Field(description="Human-readable description")
     available_metrics: List[str] = Field(description="Available distance metrics")
     available_indexes: List[str] = Field(description="Available index types")
+    available_metrics_by_index: Dict[str, List[str]] = Field(
+        description="Metrics available for each index type"
+    )
 
 
 # ============================================================================

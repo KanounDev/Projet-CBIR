@@ -132,8 +132,11 @@ def main():
     ap.add_argument("--descriptors", nargs="+", default=DESCRIPTORS,
                    help="Which descriptors to normalize")
     ap.add_argument("--test", action="store_true", help="Process test subset only")
-    ap.add_argument("--rebuild-indexes", action="store_true",
-                   help="Rebuild FAISS indexes after normalization")
+    ap.add_argument(
+        "--rebuild-indexes",
+        action="store_true",
+        help="Rebuild the standard FAISS indexes from raw features (normalization is applied only for cosine)",
+    )
     ap.add_argument("--compare", action="store_true",
                    help="Show before/after statistics")
     args = ap.parse_args()
@@ -208,7 +211,7 @@ def main():
     # Rebuild indexes if requested
     if args.rebuild_indexes:
         print(f"\n{'='*70}")
-        print("Rebuilding indexes with normalized features...")
+        print("Rebuilding standard indexes from the original feature arrays...")
         print(f"{'='*70}")
 
         import subprocess
@@ -216,25 +219,18 @@ def main():
         # Build command
         cmd = [
             sys.executable,
-            str(ROOT / "backend" / "scripts" / "03_build_indexes.py"),
+            str(ROOT / "backend" / "scripts" / "build_indexes.py"),
             "--faiss",
             "--descriptors", *args.descriptors,
+            "--metrics", "euclidean",
+            "--force",
         ]
 
         if args.test:
             cmd.append("--test")
 
-        # Temporarily rename normalized files to standard names for index building
-        print("\nNote: Indexes will be built using normalized features")
-        print("      (normalized files will be used as input)")
-
-        # Run index building
-        result = subprocess.run(cmd, cwd=str(ROOT))
-
-        if result.returncode == 0:
-            print("\n✓ Indexes rebuilt successfully!")
-        else:
-            print(f"\n✗ Index building failed with code {result.returncode}")
+        subprocess.run(cmd, cwd=str(ROOT), check=True)
+        print("\nIndexes rebuilt successfully.")
 
     print(f"\n{'='*70}")
     print("SUMMARY")

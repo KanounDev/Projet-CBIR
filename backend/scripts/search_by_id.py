@@ -341,7 +341,7 @@ def main():
                 print(f"\nRecall@{args.k}: {overlap}/{args.k} = {100*overlap/args.k:.1f}%")
     else:
         print("\nNo results obtained. Check that indexes exist.")
-        print("Run: python backend/scripts/03_build_indexes.py --faiss")
+        print("Run: python backend/scripts/build_indexes.py --faiss")
 
 
 if __name__ == "__main__":

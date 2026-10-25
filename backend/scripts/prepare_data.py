@@ -109,14 +109,22 @@ def prepare() -> None:
         print("Metadata is missing; building it from tags, licenses, and thumbnails.")
         run_script("build_metadata.py")
 
-    vgg_index = DATA_DIR / "indexes" / "vgg16_euclidean.faiss"
-    if not vgg_index.is_file() or vgg_index.stat().st_size == 0:
-        run_script("build_vgg16_index.py")
-
-    for name in DESCRIPTOR_FEATURES:
-        index = DATA_DIR / "indexes" / f"{name}_euclidean.faiss"
-        if not index.is_file() or index.stat().st_size == 0:
-            run_script("build_indexes.py", "--faiss", "--descriptors", name)
+    required_descriptors = ["vgg16", *DESCRIPTOR_FEATURES]
+    missing_indexes = [
+        name
+        for name in required_descriptors
+        if not (DATA_DIR / "indexes" / f"{name}_euclidean.faiss").is_file()
+        or (DATA_DIR / "indexes" / f"{name}_euclidean.faiss").stat().st_size == 0
+    ]
+    if missing_indexes:
+        run_script(
+            "build_indexes.py",
+            "--faiss",
+            "--descriptors",
+            *missing_indexes,
+            "--metrics",
+            "euclidean",
+        )
 
     run_script("load_mongo.py", "--if-empty", "--expected-count", str(EXPECTED_COUNT))
 

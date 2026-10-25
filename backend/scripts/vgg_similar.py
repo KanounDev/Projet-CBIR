@@ -11,6 +11,7 @@ Run from the project root (cbir-project/):
 """
 import argparse
 import glob
+import os
 import sys
 from pathlib import Path
 
@@ -20,8 +21,8 @@ from PIL import Image, ImageDraw
 # ---------- paths (relative to the project root) ----------
 ROOT = Path(__file__).resolve().parents[2]
 FEATURES = ROOT / "data" / "features" / "vgg16_gap512_1M.npy"
-WEIGHTS = ROOT / "data" / "models" / "vgg16_features_imagenet.pth"
 RAW = ROOT / "data" / "mirflickr" / "raw"
+os.environ.setdefault("TORCH_HOME", str(ROOT / "data" / "models" / "torch"))
 
 THUMB_ROOTS = [  # (last image number covered, folder)
     (330_000, RAW / "thumbs1-33" / "thumbnails"),
@@ -51,7 +52,7 @@ def query_from_external_image(path: str) -> np.ndarray:
     sys.path.insert(0, str(ROOT / "backend"))
     from app.descriptors.vgg import build_extractor, embed, pil_to_uint8
 
-    extractor = build_extractor(str(WEIGHTS), device="cpu")
+    extractor = build_extractor(device="cpu")
     x = pil_to_uint8(Image.open(path)).unsqueeze(0)
     return embed(extractor, x, device="cpu", fp16=False)[0]
 

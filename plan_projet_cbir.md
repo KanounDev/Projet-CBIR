@@ -17,7 +17,7 @@
 **Jeu de données unique** :
 1. **MIRFLICKR-1M** : 1 million d'images. Ce qui est réellement disponible dans `data/mirflickr/raw` :
    - **2 descripteurs MPEG-7 fournis** : Edge Histogram (`features_edgehistogram`, **150 valeurs** par image : 80 locales + 5 globales + 65 semi-globales) et Homogeneous Texture (`features_homogeneoustexture`, **43 valeurs** par image). Un fichier texte par image, une valeur par ligne. Rien à calculer pour ceux-là, mais **aucun descripteur couleur n'est fourni**.
-   - **Descripteurs VGG16 (deep learning)** : **512 dimensions** par image, extraits avec VGG16 pré-entraîné sur ImageNet (conv features + Global Average Pooling). Fichiers : `data/features/vgg16_gap512_1M.npy` (~2 GB), modèles dans `data/models/vgg16_features_imagenet.pth`. **Recommandé pour la similarité visuelle sémantique** (performances bien supérieures à MPEG-7).
+   - **Descripteurs VGG16 (deep learning)** : **512 dimensions** par image, extraits avec VGG16 pré-entraîné sur ImageNet (conv features + Global Average Pooling). Fichier : `data/features/vgg16_gap512_1M.npy` (~2 GB). Les poids sont téléchargés par torchvision dans le cache configuré par `TORCH_HOME` (`data/models/torch/` au démarrage). VGG16 est un descripteur complémentaire ; aucune évaluation avec jugements humains ne permet ici d'affirmer sa supériorité sémantique.
    - **Tags** (`tags`) : source des mots-clés.
    - **Licences** (`license`) : fichier texte clé/valeur (date de dépôt, licence, URL de la licence Creative Commons, titre, nom/pseudo/identifiant du propriétaire). **Selon les fichiers, il contient aussi `Photo id`, `Photo url` (image Flickr) et `Web url` (page Flickr de la photo) ; ces trois lignes sont absentes de certains fichiers** (voir « Constats sur les données réelles » ci-dessous).
    - **Vignettes uniquement** (`thumbs1-33`, `thumbs34-66`, `thumbs67-100`) : pas d'images en pleine taille en local (l'exemple `im1.jpg` fait 64×64 px). L'affichage repose sur les vignettes ; l'image complète s'ouvre via l'URL Flickr quand elle existe dans le fichier `license` (pas pour toutes les images, et certains liens Flickr peuvent être morts).
@@ -32,7 +32,7 @@
 | **Métadonnées** (chemins, URLs, tags, licences) | **MongoDB** | ✅ Recherche textuelle efficace, flexible, index sur mots-clés |
 | **Descripteurs** (Edge Histogram, Homogeneous Texture, VGG16) | **Fichiers `.npy`** dans `data/features/` | ✅ 10-100x plus rapide pour nearest neighbors, accès direct NumPy/FAISS, compatible VP-Tree |
 
-> **Important** : MongoDB stocke les **chemins** des images (`thumb_path`), pas les images elles-mêmes. Les descripteurs sont stockés en `.npy` pour des raisons de performance (recherche vectorielle). C'est l'approche recommandée pour les systèmes CBIR à grande échelle.
+> **Important** : MongoDB stocke les **chemins** des images dans le champ `thumb`, pas les images elles-mêmes. Les descripteurs sont stockés en `.npy` pour des raisons de performance (recherche vectorielle).
 
 **Fonctionnalités minimales** :
 - Requête par mots-clés **ET/OU** par image (image de la base ou image issue d'un résultat précédent).
@@ -172,8 +172,6 @@ projet-CBIR/
 │   │       ├── thumbs1-33/           (vignettes 64×64, organisées en sous-dossiers)
 │   │       ├── thumbs34-66/
 │   │       └── thumbs67-100/
-│   ├── objects/
-│   │   └── images/
 │   ├── metadata/                     (tables de correspondance id ↔ chemin/URL/tags)
 │   │   ├── metadata.jsonl            (1M images)
 │   │   └── metadata_test.jsonl       (1k images, test)
@@ -197,7 +195,7 @@ projet-CBIR/
 │   │   ├── homogeneoustexture_euclidean.faiss
 │   │   └── homogeneoustexture_euclidean.vptree
 │   ├── models/                       (modèles pré-entraînés)
-│   │   └── vgg16_features_imagenet.pth   (poids VGG16, usage hors ligne)
+│   │   └── torch/                    (cache des poids torchvision, généré au premier usage)
 │   ├── search_results/               (résultats de recherche, montages)
 │   └── benchmark_results.json
 │
@@ -216,21 +214,21 @@ projet-CBIR/
 │   │   └── indexing/
 │   │       ├── __init__.py
 │   │       ├── distances.py          (euclidienne, L1, cosinus, chi²)
-│   │       ├── vptree.py             (VP-Tree, démonstration ≤100k)
+│   │       ├── vptree.py             (VP-Tree, démonstration sur 50k)
 │   │       ├── faiss_index.py        (FAISS, production 1M+)
 │   │       └── index_manager.py      (gestionnaire unifié)
 │   ├── scripts/                      (exécutés hors ligne)
-│   │   ├── 03_parse_descriptors.py   (parsing MPEG-7 → .npy)
-│   │   ├── 03_build_indexes.py       (construction VP-Tree + FAISS)
-│   │   ├── 04_build_metadata.py      (tags + licences → metadata.jsonl)
-│   │   ├── 04b_load_mongo.py         (chargement MongoDB)
-│   │   ├── 05_vgg_similar.py         (test recherche VGG16)
-│   │   ├── 06_try_search.py          (test recherche MPEG-7)
-│   │   ├── 07_benchmark_indexes.py   (comparaison performances)
+│   │   ├── parse_descriptors.py     (parsing MPEG-7 → .npy)
+│   │   ├── build_indexes.py         (construction FAISS/VP-Tree)
+│   │   ├── prepare_data.py          (préparation automatique des artefacts requis)
+│   │   ├── build_metadata.py        (tags + licences → metadata.jsonl)
+│   │   ├── load_mongo.py            (chargement MongoDB)
+│   │   ├── build_vptree_indexes.py  (VP-Tree optionnel, 50k)
+│   │   ├── comprehensive_evaluation.py (évaluation expérimentale)
 │   │   ├── check_mongo.py            (vérification connexion MongoDB)
 │   │   ├── normalize_features.py     (normalisation L2/z-score/minmax)
 │   │   └── search_by_id.py           (recherche avec/sans normalisation)
-│   └── tests/                        (VIDE - à implémenter)
+│   └── tests/                        (tests unitaires du contrat de recherche et des index)
 │
 ├── frontend/                         (VIDE - à implémenter)
 ├── notebooks/
@@ -258,7 +256,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 ```javascript
 {
   "_id": 42,  // identifiant numérique (id = numéro image - 1)
-  "thumb_path": "thumbs1-33/thumbnails/1/im43.jpg",  // CHEMIN RELATIF, pas l'image
+  "thumb": "thumbs1-33/thumbnails/1/im43.jpg",       // CHEMIN RELATIF, pas l'image
   "photo_url": "https://farm.static.flickr.com/...",  // URL image Flickr (optionnel)
   "web_url": "https://www.flickr.com/photos/...",    // URL page Flickr (optionnel)
   "keywords": ["sunset", "beach", "ocean"],          // tags normalisés
@@ -269,7 +267,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 }
 ```
 
-> **Important** : MongoDB stocke les **chemins** (`thumb_path`), pas les images. Les descripteurs sont en `.npy`, pas dans MongoDB.
+> **Important** : MongoDB stocke le chemin relatif dans `thumb`, pas l'image. Les descripteurs sont en `.npy`, pas dans MongoDB.
 
 **Fichiers de descripteurs** (format `.npy`, alignés par identifiant) :
 
@@ -354,13 +352,13 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
   4. Extraire par batches (GPU recommandé, CPU possible mais lent : ~2-3 jours pour 1M).
   5. L2-normaliser tous les vecteurs (distance euclidienne = similarité cosinus).
   6. Sauvegarder dans `data/features/vgg16_gap512_1M.npy` (~2 GB).
-  7. Sauvegarder les poids du modèle dans `data/models/vgg16_features_imagenet.pth` pour usage hors ligne.
+  7. Laisser torchvision mettre en cache les poids dans `TORCH_HOME` (configuré sous `data/models/torch/` par les scripts de démarrage).
 - **Outils** : **PyTorch**, **torchvision**, NumPy, GPU (optionnel mais recommandé).
 - **Contexte à donner à Claude** : le code déjà écrit dans `backend/app/descriptors/vgg.py` et `backend/scripts/05_vgg_similar.py`.
-- **Livrable** : `vgg16_gap512_1M.npy`, `vgg16_features_imagenet.pth`, script `05_extract_vgg.py` (si nouveau), module `backend/app/descriptors/vgg.py`.
+- **Livrable** : `vgg16_gap512_1M.npy`, script `backend/scripts/build_vgg16_features.py`, module `backend/app/descriptors/vgg.py`.
 - **Validation** : rechercher quelques images et vérifier que les résultats sont visuellement cohérents (bien meilleurs qu'avec MPEG-7). Script de test : `python backend/scripts/05_vgg_similar.py <image_id>`.
 
-> **Note** : Les descripteurs VGG16 sont déjà extraits et sauvegardés dans `data/features/vgg16_gap512_1M.npy`. Cette étape est validée.
+> **Note** : Le script de préparation génère `data/features/vgg16_gap512_1M.npy` s'il manque ; une extraction complète n'est pas relancée dans le cadre des tests unitaires.
 
 ### Étape 6 : Distances et recherche par similarité (version de référence)
 
@@ -378,21 +376,21 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
 
 - **Objectif** : respecter l'exigence « temps de recherche optimal ».
 - **Actions** :
-  1. Implémenter le **VP-Tree** (construction, recherche des k plus proches voisins) pour un descripteur (démonstration sur ≤100k images).
-  2. Implémenter **FAISS** (Flat index) pour la base complète de 1M (production, temps de requête ~1-10ms).
+  1. Implémenter le **VP-Tree** (construction, recherche des k plus proches voisins) pour un descripteur (démonstration euclidienne sur un sous-ensemble de 50k images ; les métriques non adaptées à l'élagage d'un VP-Tree restent disponibles avec les autres méthodes).
+  2. Implémenter **FAISS Flat** pour la base complète de 1M ; les métriques indexées dépendent du support de FAISS et des fichiers optionnels construits.
   3. Sérialiser les index sur disque et les charger au démarrage du serveur.
   4. **Comparer** : temps de la recherche exhaustive, du VP-Tree et de FAISS sur 100 requêtes, à plusieurs tailles de base (10k, 100k, 1M si possible) (tableau pour le rapport).
   5. Construire les index pour **VGG16** (recommandé), Edge Histogram et Homogeneous Texture.
 - **Outils / sources** : Python, FAISS (`faiss-cpu`), scikit-learn, `joblib`/`pickle` ; idées d'indexation dans https://github.com/MKLab-ITI/multimedia-indexing (code Java, donc source d'inspiration uniquement).
 - **Contexte à donner à Claude** : volumétrie (nombre de vecteurs, dimension), distance utilisée, mémoire disponible sur le PC cible.
-- **Livrable** : `vptree.py`, `faiss_index.py`, `index_manager.py`, script `03_build_indexes.py`, tableau comparatif.
-- **Validation** : les résultats de FAISS correspondent à ceux de la recherche exhaustive (même top-k, recall@k = 100%) et le temps de recherche est nettement inférieur.
+- **Livrable** : `vptree.py`, `faiss_index.py`, `index_manager.py`, script `backend/scripts/build_indexes.py`, tableau comparatif.
+- **Validation** : comparer les résultats FAISS à la recherche exhaustive sur un échantillon, avec le Jaccard top-k et les distances pour chaque combinaison réellement supportée. Le self-retrieval est un contrôle de cohérence, pas une mesure de qualité sémantique.
 
 ### Étape 8 : Base de données, recherche textuelle et service de recherche unifié
 
 - **Objectif** : stocker les URLs et métadonnées, permettre la recherche par mots-clés, et exposer un service de recherche unifié avec choix des descripteurs/distances/index.
 - **Actions** :
-  1. ✅ Créer la collection MongoDB, ses index (identifiant, mots-clés) et charger les métadonnées (script `04b_load_mongo.py`) : chemins des vignettes, URLs Flickr, licences, tags.
+  1. ✅ Créer la collection MongoDB, ses index (identifiant, mots-clés) et charger les métadonnées (script `backend/scripts/load_mongo.py`) : chemins des vignettes, URLs Flickr, licences, tags.
   2. Implémenter la **couche d'accès MongoDB** (`db/mongodb.py`) : connexion, requêtes par ID, par mots-clés.
   3. Implémenter la **recherche par mots-clés** (`services/text_search.py`) : normalisation, minuscules, mode ET (`$all`) / OU (`$in`).
   4. Implémenter le **service de recherche unifié** (`services/search_service.py`) qui permet à l'utilisateur de choisir :
@@ -415,7 +413,7 @@ Les vignettes sont servies par le backend (fichiers statiques) ; l'image en plei
   - Recherche visuelle avec VGG16 + euclidean retourne des résultats cohérents
   - Recherche visuelle avec Edge Histogram + chi2 retourne des résultats cohérents
   - Fusion de plusieurs descripteurs fonctionne
-  - Comparaison FAISS vs brute force donne les mêmes résultats (recall@k = 100%)
+  - Comparaison FAISS vs brute force via Jaccard top-k, uniquement sur les métriques/index effectivement pris en charge
 
 ### Étape 9 : API FastAPI
 

@@ -26,6 +26,7 @@ from app.db.mongodb import get_collection, get_image_by_id, get_images_by_ids, c
 from app.services.text_search import normalize_keywords
 from app.services.search_service import get_search_service, SearchRequest as InternalSearchRequest
 from app.indexing.index_manager import get_index_manager, FAISS_AVAILABLE
+from app.indexing.metrics import SUPPORTED_METRICS
 
 # Configuration
 DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parents[3] / "data"))
@@ -100,6 +101,7 @@ async def list_descriptors():
             description="VGG16 deep learning features (conv + GAP), best for semantic similarity",
             available_metrics=["euclidean", "cosine"],
             available_indexes=_available_indexes(manager, "vgg16"),
+            available_metrics_by_index=_available_metrics_by_index(manager, "vgg16"),
         ),
         DescriptorInfo(
             name="edgehistogram",
@@ -107,6 +109,7 @@ async def list_descriptors():
             description="MPEG-7 Edge Histogram, captures edge distribution",
             available_metrics=["euclidean", "chi2", "l1", "cosine"],
             available_indexes=_available_indexes(manager, "edgehistogram"),
+            available_metrics_by_index=_available_metrics_by_index(manager, "edgehistogram"),
         ),
         DescriptorInfo(
             name="homogeneoustexture",
@@ -114,6 +117,7 @@ async def list_descriptors():
             description="MPEG-7 Homogeneous Texture, captures texture patterns",
             available_metrics=["euclidean", "cosine", "l1"],
             available_indexes=_available_indexes(manager, "homogeneoustexture"),
+            available_metrics_by_index=_available_metrics_by_index(manager, "homogeneoustexture"),
         ),
     ]
 
@@ -122,12 +126,22 @@ async def list_descriptors():
 
 def _available_indexes(manager, descriptor: str) -> List[str]:
     """Report index implementations that have files available for this descriptor."""
+    metrics_by_index = _available_metrics_by_index(manager, descriptor)
     available = ["brute"]
-    if any(manager.indexes_dir.glob(f"{descriptor}_*.faiss")):
+    if metrics_by_index["faiss"]:
         available.append("faiss")
-    if any(manager.indexes_dir.glob(f"{descriptor}_*.vptree")):
+    if metrics_by_index["vptree"]:
         available.append("vptree")
     return available
+
+
+def _available_metrics_by_index(manager, descriptor: str):
+    """Report only metric/index combinations that runtime can execute correctly."""
+    return {
+        "brute": sorted(SUPPORTED_METRICS[descriptor]),
+        "faiss": manager.available_faiss_metrics(descriptor),
+        "vptree": manager.available_vptree_metrics(descriptor),
+    }
 
 
 # ============================================================================
@@ -232,6 +246,24 @@ def search(request: SearchRequest):
     Returns:
         Search results sorted by distance (ascending)
     """
+    if request.query_image_id is not None and not request.keywords:
+        manager = get_index_manager()
+        descriptors = request.descriptors or ["vgg16"]
+        for descriptor in descriptors:
+            metric = (request.metrics or {}).get(descriptor, "euclidean")
+            available = _available_metrics_by_index(manager, descriptor).get(
+                request.index_type, []
+            )
+            if metric not in available:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"Metric '{metric}' is not available for {descriptor} "
+                        f"with index_type '{request.index_type}'. Available metrics: "
+                        f"{', '.join(available) or 'none'}."
+                    ),
+                )
+
     # Build internal request
     internal_request = InternalSearchRequest(
         keywords=normalize_keywords(request.keywords) if request.keywords else None,

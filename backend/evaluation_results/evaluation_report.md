@@ -2,6 +2,8 @@
 
 **Date:** 2026-10-23 17:09:22
 
+> Historical snapshot: timings were collected before the FAISS metric-contract fixes. Chi-squared and L1 FAISS rows have been removed because those files did not match the brute-force metric/feature contract. Rerun `python scripts/comprehensive_evaluation.py` from `backend/` before citing these timings.
+
 ---
 
 ## 1. Self-Retrieval Sanity Checks
@@ -37,15 +39,9 @@ Self-retrieval checks whether a query's own feature vector is returned first. Th
 | edgehistogram | chi2 | brute | 10 | 100.0% | N/A | 2024.38 |
 | edgehistogram | chi2 | brute | 20 | 100.0% | N/A | 2002.98 |
 | edgehistogram | chi2 | brute | 50 | 100.0% | N/A | 1988.92 |
-| edgehistogram | chi2 | faiss | 10 | 100.0% | 20.4% | 190.53 |
-| edgehistogram | chi2 | faiss | 20 | 100.0% | 21.4% | 52.01 |
-| edgehistogram | chi2 | faiss | 50 | 100.0% | 20.2% | 52.65 |
 | edgehistogram | l1 | brute | 10 | 100.0% | N/A | 965.97 |
 | edgehistogram | l1 | brute | 20 | 100.0% | N/A | 646.31 |
 | edgehistogram | l1 | brute | 50 | 100.0% | N/A | 448.58 |
-| edgehistogram | l1 | faiss | 10 | 25.0% | 3.5% | 355.60 |
-| edgehistogram | l1 | faiss | 20 | 25.0% | 3.3% | 244.37 |
-| edgehistogram | l1 | faiss | 50 | 25.0% | 3.2% | 248.10 |
 | homogeneoustexture | euclidean | brute | 10 | 100.0% | N/A | 114.79 |
 | homogeneoustexture | euclidean | brute | 20 | 100.0% | N/A | 99.56 |
 | homogeneoustexture | euclidean | brute | 50 | 100.0% | N/A | 99.47 |
@@ -61,9 +57,6 @@ Self-retrieval checks whether a query's own feature vector is returned first. Th
 | homogeneoustexture | l1 | brute | 10 | 100.0% | N/A | 179.53 |
 | homogeneoustexture | l1 | brute | 20 | 100.0% | N/A | 175.25 |
 | homogeneoustexture | l1 | brute | 50 | 100.0% | N/A | 174.40 |
-| homogeneoustexture | l1 | faiss | 10 | 0.0% | 0.0% | 129.09 |
-| homogeneoustexture | l1 | faiss | 20 | 0.0% | 0.0% | 104.01 |
-| homogeneoustexture | l1 | faiss | 50 | 0.0% | 0.0% | 105.64 |
 
 ## 2. Index Type Comparison (FAISS vs Brute Force)
 
@@ -71,13 +64,13 @@ Self-retrieval checks whether a query's own feature vector is returned first. Th
 - Brute Force: 1714.61ms avg
 - FAISS: 328.42ms avg
 - **Speedup: 5.2x**
-- Result Consistency: 100.0%
+- Top-k Jaccard vs brute force: 100.0%
 
 ### EDGEHISTOGRAM
 - Brute Force: 392.97ms avg
 - FAISS: 92.85ms avg
 - **Speedup: 4.2x**
-- Result Consistency: 100.0%
+- Top-k Jaccard vs brute force: 100.0%
 
 
 ## 3. Multi-Descriptor Fusion

@@ -54,28 +54,27 @@ class FAISSIndex:
 
         Args:
             X: Data matrix (N, d), float32
-            metric: 'euclidean' (L2) or 'cosine'
+            metric: 'euclidean', 'cosine', or 'l1'
             train_size: Number of points to use for IVF training (ignored for flat)
         """
+        if metric not in {"euclidean", "cosine", "l1"}:
+            raise ValueError(f"FAISS does not support the '{metric}' metric in this application")
+
         X = np.asarray(X, dtype=np.float32)
+        if X.ndim != 2 or not X.shape[0] or not X.shape[1]:
+            raise ValueError("Features must be a non-empty 2D matrix")
+        if self.index_type != "flat" and metric != "euclidean":
+            raise ValueError("Only flat FAISS indexes are supported for cosine and L1")
         self.n, self.d = X.shape
 
-        # Normalize for cosine similarity (then use L2)
-        if metric == 'cosine':
-            norms = np.linalg.norm(X, axis=1, keepdims=True) + 1e-9
-            X = X / norms
-            self._metric = 'cosine'
-        else:
-            self._metric = 'euclidean'
+        self._metric = metric
 
         if self.index_type == 'flat':
-            # Exact search
             if metric == 'cosine':
-                # Inner product on normalized vectors = cosine similarity
-                # FAISS returns -inner_product, so we negate for distance
                 self.index = faiss.IndexFlatIP(self.d)
+            elif metric == 'l1':
+                self.index = faiss.IndexFlat(self.d, faiss.METRIC_L1)
             else:
-                # L2 (Euclidean) distance
                 self.index = faiss.IndexFlatL2(self.d)
         elif self.index_type == 'ivf':
             # Approximate search with inverted file
@@ -92,9 +91,13 @@ class FAISSIndex:
         # Add vectors (in chunks for memory efficiency with memmap)
         chunk_size = 100000
         for i in range(0, self.n, chunk_size):
-            chunk = X[i:i + chunk_size]
-            if isinstance(chunk, np.memmap):
-                chunk = np.asarray(chunk, dtype=np.float32)
+            chunk = np.asarray(X[i:i + chunk_size], dtype=np.float32)
+            if not np.isfinite(chunk).all():
+                raise ValueError(f"Features contain NaN or infinite values in rows {i}:{i + len(chunk)}")
+            if metric == 'cosine':
+                norms = np.linalg.norm(chunk, axis=1, keepdims=True)
+                norms[norms == 0] = 1
+                chunk = chunk / norms
             self.index.add(chunk)
 
         if self.index_type == 'ivf':
@@ -112,22 +115,28 @@ class FAISSIndex:
         """
         if self.index is None:
             raise RuntimeError("Index not built. Call build() first.")
+        if k < 1:
+            raise ValueError("k must be positive")
+        k = min(k, self.n)
 
         q = np.asarray(q, dtype=np.float32)
         if q.ndim == 1:
             q = q.reshape(1, -1)
 
-        # Normalize for cosine
+        if q.ndim != 2 or q.shape[1] != self.d or not np.isfinite(q).all():
+            raise ValueError(f"Query must be a finite vector with {self.d} dimensions")
+
         if self._metric == 'cosine':
-            norms = np.linalg.norm(q, axis=1, keepdims=True) + 1e-9
+            norms = np.linalg.norm(q, axis=1, keepdims=True)
+            norms[norms == 0] = 1
             q = q / norms
 
-        # Search
         distances, indices = self.index.search(q, k)
 
-        # For cosine with IP index, distance is -similarity; convert to 1 - similarity
-        if self._metric == 'cosine' and self.index_type == 'flat':
-            distances = 1.0 + distances  # distance = 1 - similarity
+        if self._metric == 'cosine':
+            distances = 1.0 - distances
+        elif self._metric == 'euclidean':
+            distances = np.sqrt(np.maximum(distances, 0))
 
         if indices.shape[0] == 1:
             return indices[0], distances[0]

@@ -17,7 +17,6 @@ Usage:
     python scripts/comprehensive_evaluation.py
 """
 import json
-import os
 import sys
 import time
 from dataclasses import dataclass, asdict
@@ -30,9 +29,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.indexing.index_manager import get_index_manager
-from app.indexing.distances import METRICS
 from app.services.search_service import get_search_service, SearchRequest
-from app.db.mongodb import get_collection, get_image_by_id
 
 # Configuration
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "evaluation_results"
@@ -70,39 +67,33 @@ class ComparisonResult:
     winner: str
 
 
-def compute_self_retrieval_score(manager, descriptor: str, query_id: int, metric: str, index_type: str, k: int) -> Tuple[float, float, float, np.ndarray]:
+def compute_self_retrieval_score(
+    manager,
+    descriptor: str,
+    query_id: int,
+    metric: str,
+    index_type: str,
+    k: int,
+) -> Tuple[float, float, np.ndarray]:
     """Check if query image is retrieved at rank 0 (self-retrieval test).
 
-    Returns:
-        Tuple of (is_first, distance_to_self, search_time_ms, all_distances)
+    Returns self-retrieval success, elapsed time, and neighbor distances excluding the query.
     """
     query_vec = manager.get_feature_vector(descriptor, query_id)
 
     start = time.perf_counter()
-    try:
-        if index_type == "brute":
-            ids, dists = manager.search_brute_force(descriptor, query_vec, metric, k=k, exclude_id=None)
-        elif index_type == "faiss":
-            ids, dists = manager.search_faiss(descriptor, query_vec, metric, k=k)
-        else:
-            return 0.0, float('inf'), 0.0, np.array([])
-    except Exception as e:
-        print(f"    Error: {e}")
-        return 0.0, float('inf'), 0.0, np.array([])
+    if index_type == "brute":
+        ids, dists = manager.search_brute_force(descriptor, query_vec, metric, k=k, exclude_id=None)
+    elif index_type == "faiss":
+        ids, dists = manager.search_faiss(descriptor, query_vec, metric, k=k)
+    else:
+        raise ValueError(f"Unsupported evaluation index type: {index_type}")
 
     elapsed_ms = (time.perf_counter() - start) * 1000
 
     # Check if query is at rank 0
     is_first = 1.0 if len(ids) > 0 and ids[0] == query_id else 0.0
-    distance_to_self = float(dists[0]) if len(dists) > 0 else float('inf')
-
-    # Return all distances (excluding distance to self if query is at rank 0)
-    if len(ids) > 0 and ids[0] == query_id:
-        all_dists = dists[1:]  # Exclude distance to self
-    else:
-        all_dists = dists
-
-    return is_first, distance_to_self, elapsed_ms, all_dists
+    return is_first, elapsed_ms, dists[ids != query_id]
 
 
 def compute_neighbor_consistency(manager, descriptor: str, query_id: int, metric: str, k: int = 10) -> float:
@@ -113,22 +104,13 @@ def compute_neighbor_consistency(manager, descriptor: str, query_id: int, metric
     """
     query_vec = manager.get_feature_vector(descriptor, query_id)
 
-    try:
-        ids_brute, _ = manager.search_brute_force(descriptor, query_vec, metric, k=k)
-        ids_faiss, _ = manager.search_faiss(descriptor, query_vec, metric, k=k)
+    ids_brute, _ = manager.search_brute_force(descriptor, query_vec, metric, k=k)
+    ids_faiss, _ = manager.search_faiss(descriptor, query_vec, metric, k=k)
 
-        set_brute = set(ids_brute)
-        set_faiss = set(ids_faiss)
-
-        if len(set_brute) == 0 or len(set_faiss) == 0:
-            return 0.0
-
-        intersection = len(set_brute & set_faiss)
-        union = len(set_brute | set_faiss)
-
-        return intersection / union if union > 0 else 0.0
-    except Exception:
-        return 0.0
+    set_brute = set(ids_brute)
+    set_faiss = set(ids_faiss)
+    union = set_brute | set_faiss
+    return len(set_brute & set_faiss) / len(union) if union else 0.0
 
 
 def evaluate_descriptor(
@@ -144,6 +126,12 @@ def evaluate_descriptor(
 
     for metric in metrics:
         for index_type in index_types:
+            if (
+                index_type == "faiss"
+                and metric not in manager.available_faiss_metrics(descriptor)
+            ):
+                print(f"  Skipping {descriptor}/{metric}/faiss: no compatible built index")
+                continue
             print(f"  {descriptor}/{metric}/{index_type}:")
 
             for k in k_values:
@@ -154,7 +142,7 @@ def evaluate_descriptor(
 
                 for query_id in query_ids:
                     # Self-retrieval test
-                    is_first, dist_self, time_ms, dists = compute_self_retrieval_score(
+                    is_first, time_ms, dists = compute_self_retrieval_score(
                         manager, descriptor, query_id, metric, index_type, k
                     )
                     times.append(time_ms)
@@ -205,29 +193,31 @@ def evaluate_text_search(service, keywords_list: List[str], k_values: List[int])
         print(f"\nKeyword: '{keyword}'")
 
         for mode in ["and", "or"]:
-            request = SearchRequest(
-                keywords=[keyword],
-                keyword_mode=mode,
-                k=20
-            )
+            for k in k_values:
+                request = SearchRequest(
+                    keywords=[keyword],
+                    keyword_mode=mode,
+                    k=k
+                )
 
-            start = time.perf_counter()
-            try:
-                search_results = service.search(request)
-                elapsed_ms = (time.perf_counter() - start) * 1000
-                count = len(search_results)
-                print(f"  {mode.upper()}: {count} results, {elapsed_ms:.2f}ms")
+                start = time.perf_counter()
+                try:
+                    search_results = service.search(request)
+                    elapsed_ms = (time.perf_counter() - start) * 1000
+                    count = len(search_results)
+                    print(f"  {mode.upper()} k={k}: {count} results, {elapsed_ms:.2f}ms")
 
-                key = f"{keyword}_{mode}"
-                results[key] = {
-                    "keyword": keyword,
-                    "mode": mode,
-                    "result_count": count,
-                    "time_ms": elapsed_ms
-                }
-            except Exception as e:
-                print(f"  {mode.upper()}: Error - {e}")
-                results[f"{keyword}_{mode}"] = {"error": str(e)}
+                    key = f"{keyword}_{mode}_{k}"
+                    results[key] = {
+                        "keyword": keyword,
+                        "mode": mode,
+                        "k": k,
+                        "result_count": count,
+                        "time_ms": elapsed_ms
+                    }
+                except Exception as e:
+                    print(f"  {mode.upper()} k={k}: Error - {e}")
+                    results[f"{keyword}_{mode}_{k}"] = {"error": str(e)}
 
     return results
 
@@ -318,28 +308,18 @@ def compare_index_types(manager, descriptor: str, query_ids: List[int], k: int =
 
         # Brute force
         start = time.perf_counter()
-        try:
-            ids_brute, dists_brute = manager.search_brute_force(descriptor, query_vec, "euclidean", k=k)
-            elapsed_brute = (time.perf_counter() - start) * 1000
-            results["brute"]["times"].append(elapsed_brute)
-        except Exception:
-            results["brute"]["times"].append(float('inf'))
-            ids_brute = np.array([])
+        ids_brute, _ = manager.search_brute_force(descriptor, query_vec, "euclidean", k=k)
+        elapsed_brute = (time.perf_counter() - start) * 1000
+        results["brute"]["times"].append(elapsed_brute)
 
         # FAISS
         start = time.perf_counter()
-        try:
-            ids_faiss, dists_faiss = manager.search_faiss(descriptor, query_vec, "euclidean", k=k)
-            elapsed_faiss = (time.perf_counter() - start) * 1000
-            results["faiss"]["times"].append(elapsed_faiss)
-
-            # Compute consistency
-            if len(ids_brute) > 0:
-                union = set(ids_brute) | set(ids_faiss)
-                consistency = len(set(ids_brute) & set(ids_faiss)) / len(union) if union else 0.0
-                results["faiss"]["consistency"].append(consistency)
-        except Exception:
-            results["faiss"]["times"].append(float('inf'))
+        ids_faiss, _ = manager.search_faiss(descriptor, query_vec, "euclidean", k=k)
+        elapsed_faiss = (time.perf_counter() - start) * 1000
+        results["faiss"]["times"].append(elapsed_faiss)
+        union = set(ids_brute) | set(ids_faiss)
+        consistency = len(set(ids_brute) & set(ids_faiss)) / len(union) if union else 0.0
+        results["faiss"]["consistency"].append(consistency)
 
     # Summary
     brute_avg = np.mean(results["brute"]["times"])
@@ -396,7 +376,7 @@ def generate_report(all_results: Dict) -> str:
             report.append(f"- Brute Force: {comp['brute_avg_time_ms']:.2f}ms avg")
             report.append(f"- FAISS: {comp['faiss_avg_time_ms']:.2f}ms avg")
             report.append(f"- **Speedup: {comp['speedup']:.1f}x**")
-            report.append(f"- Result Consistency: {comp['consistency']*100:.1f}%\n")
+            report.append(f"- Top-k Jaccard vs brute force: {comp['consistency']*100:.1f}%\n")
 
     # 3. Multi-Descriptor Fusion
     report.append("\n## 3. Multi-Descriptor Fusion\n")
@@ -419,11 +399,11 @@ def generate_report(all_results: Dict) -> str:
     report.append("\n## 4. Text Search Performance\n")
 
     if "text_evaluation" in all_results:
-        report.append("| Keyword | Mode | Results | Time (ms) |")
-        report.append("|---------|------|---------|-----------|")
+        report.append("| Keyword | Mode | k | Results | Time (ms) |")
+        report.append("|---------|------|---|---------|-----------|")
         for key, data in all_results["text_evaluation"].items():
             if "error" not in data:
-                report.append(f"| {data['keyword']} | {data['mode']} | {data['result_count']} | {data['time_ms']:.2f} |")
+                report.append(f"| {data['keyword']} | {data['mode']} | {data['k']} | {data['result_count']} | {data['time_ms']:.2f} |")
 
     # 5. Recommendations
     report.append("\n## 5. Recommendations\n")
@@ -450,64 +430,46 @@ def main():
     print("\n=== Descriptor Evaluation ===")
 
     descriptor_configs = {
-        "vgg16": {
-            "metrics": ["euclidean", "cosine"],
-            "index_types": ["brute", "faiss"]
-        },
-        "edgehistogram": {
-            "metrics": ["euclidean", "cosine", "chi2", "l1"],
-            "index_types": ["brute", "faiss"]
-        },
-        "homogeneoustexture": {
-            "metrics": ["euclidean", "cosine", "l1"],
-            "index_types": ["brute", "faiss"]
-        }
+        "vgg16": ["euclidean", "cosine"],
+        "edgehistogram": ["euclidean", "cosine", "chi2", "l1"],
+        "homogeneoustexture": ["euclidean", "cosine", "l1"],
     }
 
     all_results["descriptor_evaluation"] = []
 
-    for desc, config in descriptor_configs.items():
+    for desc, metrics in descriptor_configs.items():
         print(f"\n{desc.upper()}:")
-        try:
-            results = evaluate_descriptor(
-                manager,
-                desc,
-                config["metrics"],
-                config["index_types"],
-                TEST_QUERY_IDS,
-                [10, 20, 50]
-            )
-            all_results["descriptor_evaluation"].extend(results)
-        except Exception as e:
-            print(f"  ERROR: Could not evaluate {desc}: {e}")
+        results = evaluate_descriptor(
+            manager,
+            desc,
+            metrics,
+            ["brute", "faiss"],
+            TEST_QUERY_IDS,
+            [10, 20, 50]
+        )
+        all_results["descriptor_evaluation"].extend(results)
 
     # 2. Index Type Comparison
     print("\n" + "=" * 60)
     all_results["index_comparison"] = {}
 
     for desc in ["vgg16", "edgehistogram"]:
-        try:
-            all_results["index_comparison"][desc] = compare_index_types(
-                manager, desc, TEST_QUERY_IDS
-            )
-        except Exception as e:
-            print(f"ERROR comparing indexes for {desc}: {e}")
+        if "euclidean" not in manager.available_faiss_metrics(desc):
+            print(f"Skipping {desc} index comparison: no compatible Euclidean FAISS index")
+            continue
+        all_results["index_comparison"][desc] = compare_index_types(
+            manager, desc, TEST_QUERY_IDS
+        )
 
     # 3. Multi-Descriptor Fusion
     print("\n" + "=" * 60)
-    try:
-        all_results["fusion_evaluation"] = evaluate_multi_descriptor_fusion(
-            manager, TEST_QUERY_IDS[:10]  # Fewer queries for fusion
-        )
-    except Exception as e:
-        print(f"ERROR evaluating fusion: {e}")
+    all_results["fusion_evaluation"] = evaluate_multi_descriptor_fusion(
+        manager, TEST_QUERY_IDS[:10]
+    )
 
     # 4. Text Search
     print("\n" + "=" * 60)
-    try:
-        all_results["text_evaluation"] = evaluate_text_search(service, TEST_KEYWORDS, [20])
-    except Exception as e:
-        print(f"ERROR evaluating text search: {e}")
+    all_results["text_evaluation"] = evaluate_text_search(service, TEST_KEYWORDS, [20])
 
     # Save results
     print("\n" + "=" * 60)

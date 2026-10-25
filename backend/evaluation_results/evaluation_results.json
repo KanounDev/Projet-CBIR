@@ -7,10 +7,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 6819.672724997508,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.5974025130271912,
-      "std_distance": 0.05712614580988884
+      "std_distance": 0.05712614580988884,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -19,10 +19,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 5381.816494997474,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.6119641661643982,
-      "std_distance": 0.052677277475595474
+      "std_distance": 0.052677277475595474,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -31,10 +31,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 5742.528760001005,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.6307623386383057,
-      "std_distance": 0.05034661293029785
+      "std_distance": 0.05034661293029785,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -43,10 +43,10 @@
       "index_type": "faiss",
       "k": 10,
       "search_time_ms": 2347.528814999532,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.3601530194282532,
-      "std_distance": 0.06299373507499695
+      "std_distance": 0.06299373507499695,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -55,10 +55,10 @@
       "index_type": "faiss",
       "k": 20,
       "search_time_ms": 272.58896499843104,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.3772750198841095,
-      "std_distance": 0.06127949804067612
+      "std_distance": 0.06127949804067612,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -67,10 +67,10 @@
       "index_type": "faiss",
       "k": 50,
       "search_time_ms": 212.34853499918245,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.4003959894180298,
-      "std_distance": 0.061831504106521606
+      "std_distance": 0.061831504106521606,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -79,10 +79,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 1718.8161149984808,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.1800765097141266,
-      "std_distance": 0.03149687498807907
+      "std_distance": 0.03149687498807907,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -91,10 +91,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 1762.6987149982597,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.18863748013973236,
-      "std_distance": 0.03063974902033806
+      "std_distance": 0.03063974902033806,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -103,10 +103,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 1462.7921149985923,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.2001979649066925,
-      "std_distance": 0.0309157557785511
+      "std_distance": 0.0309157557785511,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -115,10 +115,10 @@
       "index_type": "faiss",
       "k": 10,
       "search_time_ms": 950.5493799995747,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.3601530194282532,
-      "std_distance": 0.06299373507499695
+      "std_distance": 0.06299373507499695,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -127,10 +127,10 @@
       "index_type": "faiss",
       "k": 20,
       "search_time_ms": 164.87460500211455,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.3772750198841095,
-      "std_distance": 0.061279501765966415
+      "std_distance": 0.061279501765966415,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -139,10 +139,10 @@
       "index_type": "faiss",
       "k": 50,
       "search_time_ms": 163.98376000288408,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.4003959894180298,
-      "std_distance": 0.061831504106521606
+      "std_distance": 0.061831504106521606,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -151,10 +151,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 847.5295550015289,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.558174192905426,
-      "std_distance": 0.09633604437112808
+      "std_distance": 0.09633604437112808,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -163,10 +163,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 708.4190950001357,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.5738441348075867,
-      "std_distance": 0.09454266726970673
+      "std_distance": 0.09454266726970673,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -175,10 +175,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 563.9061049980228,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.5960522890090942,
-      "std_distance": 0.09588435292243958
+      "std_distance": 0.09588435292243958,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -187,10 +187,10 @@
       "index_type": "faiss",
       "k": 10,
       "search_time_ms": 288.00331999882474,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.32083919644355774,
-      "std_distance": 0.1026383712887764
+      "std_distance": 0.1026383712887764,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -199,10 +199,10 @@
       "index_type": "faiss",
       "k": 20,
       "search_time_ms": 51.12772500142455,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.3382355272769928,
-      "std_distance": 0.10667940974235535
+      "std_distance": 0.10667940974235535,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -211,10 +211,10 @@
       "index_type": "faiss",
       "k": 50,
       "search_time_ms": 49.59342499932973,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.3644722104072571,
-      "std_distance": 0.11543254554271698
+      "std_distance": 0.11543254554271698,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -223,10 +223,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 670.572964999883,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.027565760537981987,
-      "std_distance": 0.016387546434998512
+      "std_distance": 0.016387546434998512,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -235,10 +235,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 640.071300001,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.029041990637779236,
-      "std_distance": 0.017245255410671234
+      "std_distance": 0.017245255410671234,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -247,10 +247,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 652.8975549990719,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.031201109290122986,
-      "std_distance": 0.0184169989079237
+      "std_distance": 0.0184169989079237,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -259,10 +259,10 @@
       "index_type": "faiss",
       "k": 10,
       "search_time_ms": 257.9602350015193,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 2.862595558166504,
-      "std_distance": 2.1497631072998047
+      "std_distance": 2.1497631072998047,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -271,10 +271,10 @@
       "index_type": "faiss",
       "k": 20,
       "search_time_ms": 44.33723999973154,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 2.8685977458953857,
-      "std_distance": 2.148972749710083
+      "std_distance": 2.148972749710083,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -283,10 +283,10 @@
       "index_type": "faiss",
       "k": 50,
       "search_time_ms": 45.2435900006094,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 2.877657413482666,
-      "std_distance": 2.1485908031463623
+      "std_distance": 2.1485908031463623,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -295,10 +295,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 2024.3814400018891,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.6094175577163696,
-      "std_distance": 0.2051076591014862
+      "std_distance": 0.2051076591014862,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -307,10 +307,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 2002.9804250021698,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.6402378082275391,
-      "std_distance": 0.2080361396074295
+      "std_distance": 0.2080361396074295,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -319,46 +319,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 1988.9183050028805,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.6817978620529175,
-      "std_distance": 0.21660475432872772
-    },
-    {
-      "query_id": -1,
-      "descriptor": "edgehistogram",
-      "metric": "chi2",
-      "index_type": "faiss",
-      "k": 10,
-      "search_time_ms": 190.53347499866504,
-      "precision_at_k": 100.0,
-      "recall_at_k": 20.405094561441313,
-      "mean_distance": 2.862595558166504,
-      "std_distance": 2.1497631072998047
-    },
-    {
-      "query_id": -1,
-      "descriptor": "edgehistogram",
-      "metric": "chi2",
-      "index_type": "faiss",
-      "k": 20,
-      "search_time_ms": 52.00928999984171,
-      "precision_at_k": 100.0,
-      "recall_at_k": 21.412720989882747,
-      "mean_distance": 2.8685977458953857,
-      "std_distance": 2.148972988128662
-    },
-    {
-      "query_id": -1,
-      "descriptor": "edgehistogram",
-      "metric": "chi2",
-      "index_type": "faiss",
-      "k": 50,
-      "search_time_ms": 52.652064998983406,
-      "precision_at_k": 100.0,
-      "recall_at_k": 20.157846791504422,
-      "mean_distance": 2.877657413482666,
-      "std_distance": 2.1485910415649414
+      "std_distance": 0.21660475432872772,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -367,10 +331,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 965.969330000371,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 4.940828323364258,
-      "std_distance": 0.9482308626174927
+      "std_distance": 0.9482308626174927,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -379,10 +343,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 646.3086450014089,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 5.085556507110596,
-      "std_distance": 0.9174646735191345
+      "std_distance": 0.9174646735191345,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -391,46 +355,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 448.57770500166225,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 5.282771110534668,
-      "std_distance": 0.9202624559402466
-    },
-    {
-      "query_id": -1,
-      "descriptor": "edgehistogram",
-      "metric": "l1",
-      "index_type": "faiss",
-      "k": 10,
-      "search_time_ms": 355.6006350008829,
-      "precision_at_k": 25.0,
-      "recall_at_k": 3.5380116959064325,
-      "mean_distance": 13.064297676086426,
-      "std_distance": 5.98321008682251
-    },
-    {
-      "query_id": -1,
-      "descriptor": "edgehistogram",
-      "metric": "l1",
-      "index_type": "faiss",
-      "k": 20,
-      "search_time_ms": 244.3654050002806,
-      "precision_at_k": 25.0,
-      "recall_at_k": 3.347841070164119,
-      "mean_distance": 13.014238357543945,
-      "std_distance": 5.97334098815918
-    },
-    {
-      "query_id": -1,
-      "descriptor": "edgehistogram",
-      "metric": "l1",
-      "index_type": "faiss",
-      "k": 50,
-      "search_time_ms": 248.09646000067005,
-      "precision_at_k": 25.0,
-      "recall_at_k": 3.1569565511753312,
-      "mean_distance": 13.013068199157715,
-      "std_distance": 5.95242166519165
+      "std_distance": 0.9202624559402466,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -439,10 +367,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 114.79456000015489,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.11851862818002701,
-      "std_distance": 0.019627299159765244
+      "std_distance": 0.019627299159765244,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -451,10 +379,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 99.55581500253174,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.12497884780168533,
-      "std_distance": 0.019260326400399208
+      "std_distance": 0.019260326400399208,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -463,10 +391,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 99.47025000074063,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.13391873240470886,
-      "std_distance": 0.02017754502594471
+      "std_distance": 0.02017754502594471,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -475,10 +403,10 @@
       "index_type": "faiss",
       "k": 10,
       "search_time_ms": 30.679730002884753,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.014432398602366447,
-      "std_distance": 0.004218469839543104
+      "std_distance": 0.004218469839543104,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -487,10 +415,10 @@
       "index_type": "faiss",
       "k": 20,
       "search_time_ms": 12.91659000198706,
-      "precision_at_k": 100.0,
-      "recall_at_k": 99.04761904761905,
       "mean_distance": 0.015991391614079475,
-      "std_distance": 0.004695040639489889
+      "std_distance": 0.004695040639489889,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 99.04761904761905
     },
     {
       "query_id": -1,
@@ -499,10 +427,10 @@
       "index_type": "faiss",
       "k": 50,
       "search_time_ms": 12.387810001382604,
-      "precision_at_k": 100.0,
-      "recall_at_k": 99.6078431372549,
       "mean_distance": 0.018341921269893646,
-      "std_distance": 0.005552144255489111
+      "std_distance": 0.005552144255489111,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 99.6078431372549
     },
     {
       "query_id": -1,
@@ -511,10 +439,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 127.60593500061077,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.00014010204176884145,
-      "std_distance": 5.1068636821582913e-05
+      "std_distance": 5.1068636821582913e-05,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -523,10 +451,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 124.86457000195514,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.00015408256149385124,
-      "std_distance": 5.64380970899947e-05
+      "std_distance": 5.64380970899947e-05,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -535,10 +463,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 124.40485000042827,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.0001771973038557917,
-      "std_distance": 6.9356981839519e-05
+      "std_distance": 6.9356981839519e-05,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -547,10 +475,10 @@
       "index_type": "faiss",
       "k": 10,
       "search_time_ms": 35.42993500086595,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 31.999414443969727,
-      "std_distance": 3.274674654006958
+      "std_distance": 3.274674654006958,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -559,10 +487,10 @@
       "index_type": "faiss",
       "k": 20,
       "search_time_ms": 11.88864000068861,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 31.999601364135742,
-      "std_distance": 3.274639844894409
+      "std_distance": 3.274639844894409,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 100.0
     },
     {
       "query_id": -1,
@@ -571,10 +499,10 @@
       "index_type": "faiss",
       "k": 50,
       "search_time_ms": 13.392949999979464,
-      "precision_at_k": 100.0,
-      "recall_at_k": 99.6078431372549,
       "mean_distance": 31.999900817871094,
-      "std_distance": 3.274557590484619
+      "std_distance": 3.274557590484619,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": 99.6078431372549
     },
     {
       "query_id": -1,
@@ -583,10 +511,10 @@
       "index_type": "brute",
       "k": 10,
       "search_time_ms": 179.52876499984995,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.5685434937477112,
-      "std_distance": 0.09460479021072388
+      "std_distance": 0.09460479021072388,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -595,10 +523,10 @@
       "index_type": "brute",
       "k": 20,
       "search_time_ms": 175.24606000151834,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.598825991153717,
-      "std_distance": 0.0914900079369545
+      "std_distance": 0.0914900079369545,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     },
     {
       "query_id": -1,
@@ -607,46 +535,10 @@
       "index_type": "brute",
       "k": 50,
       "search_time_ms": 174.39980500057572,
-      "precision_at_k": 100.0,
-      "recall_at_k": 100.0,
       "mean_distance": 0.6395187973976135,
-      "std_distance": 0.09694887697696686
-    },
-    {
-      "query_id": -1,
-      "descriptor": "homogeneoustexture",
-      "metric": "l1",
-      "index_type": "faiss",
-      "k": 10,
-      "search_time_ms": 129.0933349970146,
-      "precision_at_k": 0.0,
-      "recall_at_k": 0.0,
-      "mean_distance": 36.8775634765625,
-      "std_distance": 1.9453374147415161
-    },
-    {
-      "query_id": -1,
-      "descriptor": "homogeneoustexture",
-      "metric": "l1",
-      "index_type": "faiss",
-      "k": 20,
-      "search_time_ms": 104.00831000079052,
-      "precision_at_k": 0.0,
-      "recall_at_k": 0.0,
-      "mean_distance": 36.8776741027832,
-      "std_distance": 1.9453374147415161
-    },
-    {
-      "query_id": -1,
-      "descriptor": "homogeneoustexture",
-      "metric": "l1",
-      "index_type": "faiss",
-      "k": 50,
-      "search_time_ms": 105.63677999889478,
-      "precision_at_k": 0.0,
-      "recall_at_k": 0.0,
-      "mean_distance": 36.877811431884766,
-      "std_distance": 1.9453372955322266
+      "std_distance": 0.09694887697696686,
+      "self_retrieval_rate_pct": 100.0,
+      "top_k_jaccard_pct": null
     }
   ],
   "index_comparison": {
@@ -808,5 +700,6 @@
       "result_count": 20,
       "time_ms": 2.166100006434135
     }
-  }
+  },
+  "evaluation_note": "Historical results measured before the FAISS metric-contract fixes. Chi-squared and L1 FAISS rows were removed because the old index files did not match the requested distance/feature contract. Rerun the evaluation script for fresh timings."
 }

@@ -257,7 +257,7 @@ Ces fichiers sont dérivés des archives dans `data/mirflickr/raw/`. `start.bat`
 |-----------------|----------------------|--------|
 | `data/features/edgehistogram.npy`, `edgehistogram_ids.npy`, `homogeneoustexture.npy`, `homogeneoustexture_ids.npy` | `parse_descriptors.py` | ~1 GB |
 | `data/features/vgg16_gap512_1M.npy` | `build_vgg16_features.py` (extraction depuis les vignettes) | ~2 GB |
-| `data/indexes/*_euclidean.faiss` | `build_indexes.py`, `build_vgg16_index.py` | ~3 GB |
+| `data/indexes/*_euclidean.faiss` | `build_indexes.py` | ~3 GB |
 | `data/metadata/metadata.jsonl` | `build_metadata.py` | ~200 MB |
 | MongoDB (`cbir.images`) | `load_mongo.py` | ~500 MB |
 | `data/models/torch/` (poids VGG16 téléchargés) | torchvision au premier calcul VGG16 | ~500 MB |
@@ -313,7 +313,7 @@ curl -X POST "http://localhost:8000/api/search" \
 ### Index de recherche
 
 - **FAISS Flat** est l'index principal et recherche sur la base complète.
-- **VP-Tree** est une démonstration limitée aux 50 000 premières images. Sa construction n'est pas lancée automatiquement, car elle peut prendre longtemps. Pour le créer manuellement après la préparation des données, exécutez `python backend/scripts/build_vptree_indexes.py` depuis la racine du dépôt. Une fois les fichiers `.vptree` présents, l'option apparaît dans l'interface et dans `/api/descriptors`.
+- **VP-Tree** est une démonstration euclidienne limitée aux 50 000 premières images. Sa construction n'est pas lancée automatiquement, car elle peut prendre longtemps. Pour le créer manuellement après la préparation des données, exécutez `python backend/scripts/build_vptree_indexes.py` depuis la racine du dépôt. Les autres métriques restent disponibles en brute-force ou avec FAISS selon leur support ; seules les distances métriques sont adaptées à l'élagage d'un VP-Tree. L'option apparaît dans l'interface seulement pour les arbres accompagnés d'un manifeste valide.
 - **Recherche exhaustive** est une référence et peut être lente sur un million d'images.
 - La fusion de plusieurs descripteurs calcule les distances de façon exhaustive. En recherche combinée texte + image, les mots-clés filtrent les candidats, puis les descripteurs les classent.
 
@@ -326,11 +326,17 @@ Les temps varient selon la machine et les paramètres de recherche. Les chiffres
 | Métrique | Compatible FAISS | Recommandée pour |
 |----------|------------------|------------------|
 | **euclidean** | ✅ Oui | Tous descripteurs |
-| **cosine** | ✅ Oui | VGG16, EdgeHistogram |
-| **chi2** | ❌ Non* | Edge Histogram (brute-force uniquement) |
-| **l1** | ❌ Non* | Tous (brute-force uniquement) |
+| **cosine** | ✅ Oui | Tous descripteurs |
+| **chi2** | ❌ Non | Edge Histogram (brute-force uniquement) |
+| **l1** | ✅ Oui | MPEG-7 (FAISS Flat ou brute-force) |
 
-*FAISS ne supporte pas nativement chi2 et L1, utilisez brute-force pour ces métriques.
+VGG16 étant déjà L2-normalisé, sa recherche cosine réutilise l'index euclidien. Les index cosine/L1 optionnels des descripteurs MPEG-7 ne sont pas créés au démarrage. Pour les construire après la préparation des données :
+
+```powershell
+python backend\scripts\build_indexes.py --faiss --descriptors edgehistogram homogeneoustexture --metrics cosine l1
+```
+
+La recherche chi2 reste exhaustive. Les anciens index optionnels sans manifeste de construction sont considérés comme non vérifiés ; l'exécution de la commande les reconstruit avec le contrat courant avant qu'ils soient proposés dans l'interface.
 
 ---
 
@@ -344,6 +350,7 @@ Les temps varient selon la machine et les paramètres de recherche. Les chiffres
 | edgehistogram | 392.97 ms | 92.85 ms | **4.2x** |
 
 Ces valeurs proviennent de `backend/evaluation_results/evaluation_report.md`. Le rapport ne fournit pas de comparaison agrégée brute-force/FAISS équivalente pour Homogeneous Texture.
+Ce sont des mesures historiques obtenues avant la correction du contrat de métriques ; elles sont conservées pour contexte et doivent être recalculées avant toute comparaison de performance dans le rapport final.
 
 ### Vérifications self-retrieval
 
@@ -369,7 +376,8 @@ Le taux de self-retrieval indique seulement si le vecteur de l'image requête re
 ### Index
 
 - **VP-Tree** : Limité à 50,000 images (démonstration uniquement)
-- **FAISS avec chi2/L1** : Les résultats peuvent différer du brute-force ; comparer le Jaccard top-k et utiliser brute-force lorsque la fidélité est requise.
+- **Chi-squared** : Disponible en recherche exhaustive uniquement.
+- **Index optionnels hérités** : Les index FAISS cosine/L1 créés par les anciennes versions doivent être reconstruits avec `build_indexes.py` pour garantir que les vecteurs de requête et ceux indexés utilisent la même représentation.
 
 ### Performances
 

@@ -521,7 +521,7 @@ Voir `data/mirflickr/raw/license/` pour les licences individuelles des images.
 
 ## 👤 Auteur
 
-Projet académique - Système CBIR MIRFLICKR-1M
+Projet académique - Amir Abbes et Mohamed Kanoun
 
 ---
 

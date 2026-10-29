@@ -14,6 +14,7 @@
 - [Métriques de distance](#-métriques-de-distance)
 - [Résultats d'évaluation](#-résultats-dévaluation)
 - [Limitations connues](#-limitations-connues)
+- [Déploiement avec Docker](#-déploiement-avec-docker-optionnel)
 
 ---
 
@@ -51,6 +52,8 @@
                   │ - licences     │            │ - homogtexture   │  │ - thumbs67-100/ │
                   └────────────────┘            └──────────────────┘  └─────────────────┘
 ```
+
+> **Choix de conception — stockage des index et des caractéristiques** : MongoDB ne contient que les **métadonnées** (chemins, URLs Flickr, tags, licences). Les descripteurs (`.npy`) et les index FAISS (`.faiss`) sont conservés **sous forme de fichiers** dans `data/features/` et `data/indexes/`, générés automatiquement au premier démarrage. Ils ne sont pas stockés dans une base vectorielle (type Qdrant) ; voir [Limitations connues](#-limitations-connues).
 
 ### Structure des répertoires
 
@@ -135,7 +138,10 @@ projet-CBIR/
 |----------|---------|-------|
 | **Python** | 3.11+ | Runtime principal |
 | **MongoDB** | Version installée localement ; Docker Compose utilise 7.0 | Base de données métadonnées |
+| **Docker Desktop** (avec Compose) | 20.10+ / Compose 2.0+ | Uniquement pour la méthode Docker |
 | **Git** | 2.0+ | Gestion de version |
+
+> Selon la méthode de démarrage choisie : **`start.bat`** exige Python 3.11+ et MongoDB Community Server (avec `mongod` dans le `PATH`) ; **Docker** exige seulement Docker Desktop (Python et MongoDB sont fournis par les conteneurs).
 
 ### Bibliothèques Python principales
 
@@ -194,10 +200,12 @@ data/mirflickr/raw/
 
 Après avoir téléchargé et extrait les archives dans `data/mirflickr/raw/`, choisissez **une** méthode :
 
-- **Windows sans Docker** : double-cliquez sur `start.bat`. Il crée un environnement virtuel, installe les dépendances manquantes et démarre MongoDB localement si nécessaire (MongoDB Community Server doit être installé et `mongod` disponible dans `PATH`).
-- **Docker** : suivez la section « Déploiement avec Docker » ci-dessous. MongoDB est fourni par Compose.
+- **Windows sans Docker** : double-cliquez sur `start.bat`. Il exige **Python 3.11+**, crée un environnement virtuel, installe les dépendances Python manquantes et démarre MongoDB localement si nécessaire. **`start.bat` n'installe pas MongoDB** : MongoDB Community Server doit être installé au préalable et `mongod` disponible dans le `PATH` (ou MongoDB déjà en cours d'exécution).
+- **Docker** : exécutez `docker compose up --build -d` depuis la racine du dépôt (voir la section « Déploiement avec Docker » ci-dessous). Docker Desktop est requis ; MongoDB est fourni par Compose.
 
-Au premier démarrage, l'application génère les descripteurs, les index FAISS et les métadonnées manquants, puis charge MongoDB. Le calcul VGG16 et la construction des index peuvent prendre longtemps. Une connexion Internet est nécessaire une première fois pour télécharger les poids ImageNet de VGG16 dans le cache `data/models/torch/`.
+Dans les deux cas, **seul le dataset MIRFLICKR doit être téléchargé manuellement** : les descripteurs, les index FAISS, les métadonnées et les documents MongoDB sont créés automatiquement localement (aucune de ces données dérivées n'est fournie dans le dépôt).
+
+Au premier démarrage, l'application génère les descripteurs, les index FAISS et les métadonnées manquants, puis charge MongoDB. Le calcul VGG16 et la construction des index peuvent prendre **plusieurs heures**. Une connexion Internet est nécessaire une première fois pour télécharger les poids ImageNet de VGG16 dans le cache `data/models/torch/`.
 
 ---
 
@@ -251,7 +259,7 @@ Ces données doivent être téléchargées depuis https://press.liacs.nl/mirflic
 
 ### Données générées automatiquement au démarrage
 
-Ces fichiers sont dérivés des archives dans `data/mirflickr/raw/`. `start.bat` et l'image Docker exécutent `backend/scripts/prepare_data.py` et ne recréent pas les éléments déjà présents.
+Ces fichiers sont dérivés des archives dans `data/mirflickr/raw/`. `start.bat` et l'image Docker exécutent `backend/scripts/prepare_data.py` et ne recréent pas les éléments déjà présents. Les descripteurs (`.npy`) et les index (`.faiss`) restent des **fichiers locaux** ; seules les métadonnées sont importées dans MongoDB.
 
 | Dossier/Fichier | Script de génération | Taille |
 |-----------------|----------------------|--------|
@@ -379,6 +387,14 @@ Le taux de self-retrieval indique seulement si le vecteur de l'image requête re
 - **Chi-squared** : Disponible en recherche exhaustive uniquement.
 - **Index optionnels hérités** : Les index FAISS cosine/L1 créés par les anciennes versions doivent être reconstruits avec `build_indexes.py` pour garantir que les vecteurs de requête et ceux indexés utilisent la même représentation.
 
+### Stockage des index et des caractéristiques
+
+- **Index et descripteurs stockés sous forme de fichiers, pas dans une base de données** : le backend charge les fichiers `.faiss` et `.npy` depuis `data/indexes/` et `data/features/`. MongoDB ne contient que les métadonnées.
+- **Un index FAISS n'est pas un index natif de base de données** : c'est une structure de recherche sérialisée que FAISS doit charger en mémoire pour l'exécuter. Il peut être conservé comme artefact binaire dans une base ou un stockage objet (par exemple MongoDB GridFS), mais le backend devrait alors le récupérer et le charger dans FAISS avant toute recherche.
+- **Qdrant ne peut ni importer ni exécuter un fichier `.faiss`** : Qdrant stocke des vecteurs et construit son **propre** index de recherche. Utiliser Qdrant impliquerait de remplacer FAISS par l'API de recherche de Qdrant, et non de réutiliser les index FAISS existants. Cette option n'a pas été retenue : le projet repose sur FAISS et la recherche exhaustive (brute-force).
+- **La recherche exhaustive n'utilise pas d'index** : elle compare directement la requête aux vecteurs de caractéristiques, qui doivent donc rester disponibles (`.npy`).
+- **Recommandation** : pour ce projet, conserver les caractéristiques et les index FAISS sous forme de fichiers est l'approche la plus simple et la plus directe. Une base vectorielle ne se justifierait que si l'on abandonnait FAISS au profit de son moteur d'indexation.
+
 ### Performances
 
 - **Premier démarrage lent** : Chargement des index en mémoire (~30 secondes)
@@ -390,8 +406,7 @@ Le taux de self-retrieval indique seulement si le vecteur de l'image requête re
 
 ### Prérequis Docker
 
-- **Docker** 20.10+ installé
-- **Docker Compose** 2.0+ installé
+- **Docker Desktop** (Docker 20.10+ et Docker Compose 2.0+) installé et **démarré**
 - Au moins **8 GB de RAM** disponible pour Docker
 
 ### Architecture Docker
@@ -434,6 +449,8 @@ docker compose down
 docker compose down -v
 ```
 
+> **Remarque** : utilisez `docker compose up --build -d` plutôt que `docker-compose up -d`. L'option `--build` garantit que l'image du backend est construite à partir du code du dépôt. L'ancienne commande `docker-compose up -d` peut fonctionner sur une machine vierge, mais seule la forme avec `--build` est documentée.
+
 Le backend attend que MongoDB soit prêt, puis prépare automatiquement les fichiers absents et importe les métadonnées si la collection `cbir.images` est vide. Les fichiers générés sont écrits dans les dossiers `data/features/`, `data/indexes/`, `data/metadata/` et `data/models/` sur l'hôte ; les données brutes sont montées en lecture seule. Le premier démarrage peut prendre des heures pour extraire les caractéristiques VGG16 des 1 million de vignettes. Une connexion Internet est nécessaire pour télécharger les poids ImageNet de VGG16 si le cache est vide.
 
 ### Accès avec Docker
@@ -458,8 +475,9 @@ Le backend attend que MongoDB soit prêt, puis prépare automatiquement les fich
 ### Avantages de Docker
 
 - ✅ **Environnement reproductible** : Même configuration partout
-- ✅ **Installation simplifiée** : Une seule commande `docker compose up --build`
+- ✅ **Installation simplifiée** : Une seule commande `docker compose up --build -d`
 - ✅ **MongoDB inclus** : Pas d'installation manuelle
+- ✅ **Données dérivées générées automatiquement** : Seul le dataset MIRFLICKR est à télécharger
 - ✅ **Isolation** : Pas de conflit avec autres projets
 
 ### Limitations Docker
